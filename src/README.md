@@ -21,10 +21,31 @@ file just records the planned layout so build-order work (see the main
 - **`walker_companion_app`** — the optional local dashboard (§5.5), last
   in the build order.
 
-## Setup (once packages exist)
+## Setup
+
+Dev workstation target: Ubuntu 22.04 "Jammy" (or a Jammy-based distro, e.g. Linux Mint 21.3) — matches
+ROS2 Humble. See the Phase 1 roadmap design
+(`docs/superpowers/specs/2026-08-30-phase1-roadmap-design.md`) for why onboard-board choice is deferred
+and why this workstation is where `walker_safety`/`walker_motor_driver`/`walker_nav` get developed first,
+against a lightweight simulation, before any hardware is involved.
 
 ```bash
-sudo apt install ros-humble-desktop ros-humble-slam-toolbox ros-humble-navigation2
+# ROS2 apt repo isn't configured by default — add it first
+sudo apt-get update
+sudo apt-get install -y curl gnupg lsb-release ca-certificates
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+
+sudo apt-get update
+sudo apt-get install -y ros-humble-desktop ros-humble-slam-toolbox ros-humble-navigation2 ros-humble-nav2-bringup python3-colcon-common-extensions python3-rosdep
+
+sudo rosdep init
+rosdep update
+```
+
+Once packages exist under `src/`:
+
+```bash
 cd src
 colcon build --symlink-install
 source install/setup.bash
