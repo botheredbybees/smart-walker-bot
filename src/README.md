@@ -1,15 +1,22 @@
 # ROS2 workspace
 
-This directory is a `colcon` workspace root. No packages exist yet — this
-file just records the planned layout so build-order work (see the main
-[README](../README.md) §6) lands in a consistent place.
+This directory is a `colcon` workspace root. Two packages now exist —
+`walker_safety` and `walker_motor_driver` (the first two build-order
+steps); the remaining three below are still planned. This file records
+the layout so build-order work (see the main [README](../README.md) §6)
+lands in a consistent place.
+
+Note that `walker_safety` is deliberately *not* a colcon package — its
+watchdog runs on a physically separate Pico, outside the ROS2 graph
+entirely (see its own README). `walker_motor_driver` is a real
+`ament_python` package.
 
 ## Planned packages
 
-- **`walker_safety`** — hardware E-stop wiring notes + the software
+- **Built.** **`walker_safety`** — hardware E-stop wiring notes + the software
   watchdog node (main README §5.4). Build-order step 2, before any motor
   is under program control.
-- **`walker_motor_driver`** — L298N/BTS7960 interface translating motion
+- **Built.** **`walker_motor_driver`** — L298N/BTS7960 interface translating motion
   commands into wheel speeds (§5.2). Reference:
   [dblanding/diy-ROS-robot](https://github.com/dblanding/diy-ROS-robot) for
   the Pi → driver-board wiring pattern.
@@ -43,10 +50,17 @@ sudo rosdep init
 rosdep update
 ```
 
-Once packages exist under `src/`:
+Build/test `walker_motor_driver`:
 
 ```bash
+source /opt/ros/humble/setup.bash
 cd src
-colcon build --symlink-install
+PYTHONNOUSERSITE=1 colcon build --packages-select walker_motor_driver --symlink-install
 source install/setup.bash
+
+python3 -m pytest walker_motor_driver/test/ -v   # pure-module unit tests, no ROS sourcing needed
 ```
+
+(`PYTHONNOUSERSITE=1` works around a workstation-specific setuptools/jaraco.functools version
+mismatch between this machine's user-site Python packages and what ROS2 Humble's apt packages
+expect — not a general ROS2 requirement, and may not be needed on other machines.)

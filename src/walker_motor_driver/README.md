@@ -16,8 +16,14 @@ build it with `colcon build --packages-select walker_motor_driver` from
   unit-tested with pytest.
 - `walker_motor_driver/motor_backend.py` — the `MotorBackend` interface
   that separates the ROS2 node from how wheel speeds actually get
-  applied and measured. This is the sim/real boundary: the node's code
-  never changes when a real backend replaces the sim one.
+  applied and measured. This is the sim/real boundary: the node's
+  *control logic* (parameter handling, `/cmd_vel` subscription,
+  `/odom`/TF publishing, kinematics/odometry calls) doesn't change when a
+  real backend replaces the sim one — only the backend-construction
+  branch in `MotorDriverNode.__init__` gains an `elif` for the new
+  backend. `MotorBackend` also declares a `stop()` lifecycle method
+  (called on clean shutdown) so a real backend has a defined place to
+  de-energize motors.
 - `walker_motor_driver/sim_backend.py` — `SimMotorBackend`, an idealized
   kinematic simulator (commanded speed achieved instantly, no motor
   dynamics or slip). The only backend that exists until hardware
@@ -30,8 +36,11 @@ build it with `colcon build --packages-select walker_motor_driver` from
   real backend is implemented).
 - `tools/verify_motor_driver.py` — a scripted (not pytest) end-to-end
   check: launch the node, publish a `/cmd_vel` command, confirm `/odom`
-  moves as expected. Doesn't need any physical hardware — the sim
-  backend is enough. See this file's own docstring for usage.
+  moves as expected (both that the pose advances and that the reported
+  linear velocity matches the clamped value the kinematics predict) and
+  that the `odom`→`base_link` transform is broadcast on `/tf`. Doesn't
+  need any physical hardware — the sim backend is enough. See this
+  file's own docstring for usage.
 
 ## Running the pure-module tests
 

@@ -31,3 +31,7 @@ class SimMotorBackend(MotorBackend):
         right_delta_rad = self._right_rad_s * dt_s
         self._last_read_s = now_s
         return left_delta_rad, right_delta_rad
+
+    def stop(self):
+        self._left_rad_s = 0.0
+        self._right_rad_s = 0.0

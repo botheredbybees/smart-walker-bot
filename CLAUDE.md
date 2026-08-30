@@ -4,9 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Early scaffold stage. No ROS2 packages exist yet — `src/` is an empty `colcon` workspace root with only a
-planning README. There is no build, lint, or test tooling to run yet. When packages start landing, update this
-file (and `src/README.md`) with the real commands.
+Two packages exist under `src/`: `walker_safety` (E-stop wiring docs + Pico watchdog firmware -
+not a colcon package, see its own README) and `walker_motor_driver` (a real `ament_python` ROS2
+node - differential-drive motor control backed by a simulator until real hardware exists).
+
+Build/test `walker_motor_driver`:
+
+```bash
+source /opt/ros/humble/setup.bash
+cd src
+PYTHONNOUSERSITE=1 colcon build --packages-select walker_motor_driver --symlink-install
+python3 -m pytest walker_motor_driver/test/ -v   # pure-module unit tests, no ROS sourcing needed
+```
+
+(`PYTHONNOUSERSITE=1` works around a workstation-specific setuptools/jaraco.functools version
+mismatch between this machine's user-site Python packages and what ROS2 Humble's apt packages
+expect - not a general ROS2 requirement, and may not be needed on other machines.)
+
+Remaining planned packages (`walker_nav`, `walker_llm_bridge`, `walker_companion_app`) don't
+exist yet.
 
 ## What this project is
 

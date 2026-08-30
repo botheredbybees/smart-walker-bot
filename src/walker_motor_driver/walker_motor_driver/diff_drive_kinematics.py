@@ -24,6 +24,24 @@ def twist_to_wheel_speeds(linear_x_m_s, angular_z_rad_s, wheel_radius_m, wheel_s
     return left_rad_s, right_rad_s
 
 
+def clamp_wheel_speeds(left_rad_s, right_rad_s, max_wheel_speed_rad_s):
+    """Scale both wheel speeds by a common factor so commanded curvature
+    survives saturation, rather than clamping each wheel independently
+    (which silently changes the turn ratio - a robot commanded to curve
+    around an obstacle would instead drive straight into it once either
+    wheel saturates). Non-finite input (NaN/inf) is rejected as a stop,
+    not passed through - a malformed /cmd_vel must never produce
+    full-speed motion.
+    """
+    if not (math.isfinite(left_rad_s) and math.isfinite(right_rad_s)):
+        return 0.0, 0.0
+    peak = max(abs(left_rad_s), abs(right_rad_s))
+    if peak <= max_wheel_speed_rad_s:
+        return left_rad_s, right_rad_s
+    scale = max_wheel_speed_rad_s / peak
+    return left_rad_s * scale, right_rad_s * scale
+
+
 class OdometryTracker:
     """Integrates wheel-rotation deltas into a 2D robot pose (x, y, theta).
 

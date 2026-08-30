@@ -54,8 +54,13 @@ class MotorBackend:
 `SimMotorBackend` implements this now with an idealized kinematic model (commanded wheel speed
 achieved instantly, no motor dynamics, no slip). At the hardware bring-up checkpoint
 (roadmap design §3 step 4), a `GpioMotorBackend` gets added alongside it, selected by a launch
-argument (`backend:=sim|real`) — the ROS2 node file (`motor_driver_node.py`) never changes at
-bring-up, only a new backend file gets added and selected. This mirrors `walker_safety`'s split
+argument (`backend:=sim|real`) — the ROS2 node's control logic (parameter handling, `/cmd_vel`
+subscription, `/odom`/TF publishing, kinematics/odometry calls) never changes at bring-up. Only
+the backend-construction branch in `__init__` (currently a single `if backend_name == 'sim':`)
+gains a new `elif` for the added backend, and `MotorBackend` declares a `stop()` lifecycle
+method (called from `main()`'s shutdown path) so a future hardware backend has a defined place
+to de-energize motors on clean shutdown, not just on E-stop/watchdog cutoff.
+This mirrors `walker_safety`'s split
 between pure logic (`watchdog_logic.py`) and the hardware-facing entry point (`main.py`), and
 was chosen over "call the sim directly, edit the node's internals later" specifically because
 the roadmap design's stated goal (§2.1) is to avoid rework when the board/hardware decision is
@@ -92,6 +97,14 @@ redundant with, and could create false confidence alongside, the physical cutoff
 to be independent of exactly this kind of software. This is a boundary worth stating explicitly
 so it isn't "fixed" by someone adding coupling later.
 
+This is distinct from `motor_driver_node.py`'s local `cmd_vel_timeout_s` behavior: if no
+`/cmd_vel` command arrives within that timeout, the node zeroes wheel speeds itself, using only
+information it already has (when it last received a command). That's ordinary defensive behavior
+for a velocity-command interface, not a heartbeat protocol, not a check against `walker_safety`'s
+watchdog state, and not a substitute for the hardware E-stop. The boundary this section draws is
+against *coupling to walker_safety specifically*, not against this package having any fail-safe
+behavior of its own.
+
 ## 3. Package structure
 
 New `ament_python` package:
@@ -107,8 +120,11 @@ src/walker_motor_driver/
     motor_driver_node.py        (rclpy node, wires the above together)
   launch/motor_driver.launch.py (backend:=sim|real argument, default sim)
   test/
+    conftest.py
     test_diff_drive_kinematics.py
     test_sim_backend.py
+  tools/
+    verify_motor_driver.py       (scripted end-to-end check, not pytest)
 ```
 
 ## 4. Testing
