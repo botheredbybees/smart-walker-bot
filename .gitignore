@@ -11,3 +11,6 @@ __pycache__/
 .vscode/
 *.swp
 .DS_Store
+
+# Git worktrees for isolated plan execution
+.worktrees/
