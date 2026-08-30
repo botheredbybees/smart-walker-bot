@@ -31,9 +31,9 @@ python3 -m pytest tests/ -v
 
 The watchdog currently auto-recovers: if heartbeats resume after a trip,
 `is_tripped()` returns `False` again on the next heartbeat, re-enabling
-motors without any manual reset step. This matches `README.md` §5.4's
-literal description ("halts motors if it stops receiving heartbeat
-signals"). A latching design (requiring an explicit reset before motors
-re-enable) is arguably safer for a real E-stop and worth reconsidering
-once there's a physical robot to test against — deferred rather than
-guessed at now.
+motors without any manual reset step. This matches the literal
+description in the project's root `README.md` §5.4 ("halts motors if it
+stops receiving heartbeat signals"). A latching design (requiring an
+explicit reset before motors re-enable) is arguably safer for a real
+E-stop and worth reconsidering once there's a physical robot to test
+against — deferred rather than guessed at now.

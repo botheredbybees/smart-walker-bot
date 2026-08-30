@@ -15,3 +15,7 @@ def test_rejects_empty_bytes():
 
 def test_rejects_multi_byte_payload():
     assert is_heartbeat_byte(b"\x01\x01") is False
+
+
+def test_rejects_none():
+    assert is_heartbeat_byte(None) is False

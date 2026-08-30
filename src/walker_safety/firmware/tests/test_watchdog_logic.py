@@ -42,6 +42,12 @@ def test_repeated_heartbeats_use_latest_time():
     assert wd.is_tripped(now_s=2.6) is True
 
 
+def test_backwards_time_jump_is_tripped():
+    wd = Watchdog(timeout_s=0.5)
+    wd.on_heartbeat(now_s=100.0)
+    assert wd.is_tripped(now_s=50.0) is True
+
+
 def test_negative_or_zero_timeout_rejected():
     with pytest.raises(ValueError):
         Watchdog(timeout_s=0)

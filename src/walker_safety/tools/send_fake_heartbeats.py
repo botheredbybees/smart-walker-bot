@@ -24,9 +24,12 @@ def main():
 
     with serial.Serial(args.port, baudrate=115200, timeout=1) as ser:
         print(f"Sending heartbeats to {args.port} every {args.interval}s. Ctrl+C to stop.")
-        while True:
-            ser.write(HEARTBEAT_BYTE)
-            time.sleep(args.interval)
+        try:
+            while True:
+                ser.write(HEARTBEAT_BYTE)
+                time.sleep(args.interval)
+        except KeyboardInterrupt:
+            print("\nStopped.")
 
 
 if __name__ == "__main__":
