@@ -3,7 +3,7 @@
 <package format="3">
   <name>walker_nav</name>
   <version>0.0.1</version>
-  <description>SLAM integration layer for smart-walker-bot: a simulated LiDAR (ray-cast against a fixed room) feeding slam_toolbox, until real hardware exists.</description>
+  <description>SLAM + Nav2 integration layer for smart-walker-bot: a simulated LiDAR feeding slam_toolbox, and nav2_bringup's navigation stack configured against the live map, until real hardware exists.</description>
   <maintainer email="botheredbybees@gmail.com">botheredbybees</maintainer>
   <license>Apache-2.0</license>
 
@@ -13,6 +13,8 @@
   <depend>geometry_msgs</depend>
   <depend>tf2_msgs</depend>
   <exec_depend>slam_toolbox</exec_depend>
+  <depend>nav2_msgs</depend>
+  <exec_depend>nav2_bringup</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

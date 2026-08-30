@@ -9,8 +9,14 @@ setup(
     data_files=[
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        ('share/' + package_name + '/launch', ['launch/walker_nav.launch.py']),
-        ('share/' + package_name + '/config', ['config/slam_toolbox_params.yaml']),
+        ('share/' + package_name + '/launch', [
+            'launch/walker_nav.launch.py',
+            'launch/nav2.launch.py',
+        ]),
+        ('share/' + package_name + '/config', [
+            'config/slam_toolbox_params.yaml',
+            'config/nav2_params.yaml',
+        ]),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
