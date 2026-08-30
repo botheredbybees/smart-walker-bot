@@ -18,7 +18,7 @@
 - No coupling to `walker_safety`'s watchdog: this package never checks watchdog state and never publishes a heartbeat. (spec §2.6)
 - Real `ament_python` colcon package (unlike `walker_safety`, which deliberately isn't one) — buildable with `colcon build --packages-select walker_motor_driver` from the `src/` workspace root (matches this repo's existing convention: `src/` itself is the colcon workspace root, per `src/README.md` and its `.gitignore` entries `src/build/`, `src/install/`, `src/log/`). (spec §2.2)
 - `GpioMotorBackend` and real hardware wiring are out of scope for this plan — deferred to the hardware bring-up checkpoint. (spec §5)
-- Pure modules (`diff_drive_kinematics.py`, `sim_backend.py`) have zero `rclpy` imports, so their tests run with plain `python3 -m pytest` — no ROS environment sourcing or colcon build required. Tests import via a `test/conftest.py` that inserts the package's inner `walker_motor_driver/` directory onto `sys.path` (bare module imports, e.g. `from diff_drive_kinematics import ...`), the same pattern `walker_safety/firmware/tests/conftest.py` already established in this repo — chosen over the standard ament_python "import the installed package" convention specifically so these fast unit tests never depend on a successful `colcon build` first.
+- Pure modules (`diff_drive_kinematics.py`, `sim_backend.py`) have zero `rclpy` imports, so their tests run with plain `python3 -m pytest` — no ROS environment sourcing or colcon build required. Tests import via a `test/conftest.py` that inserts the package's *outer* directory (`src/walker_motor_driver/`, one level above the inner package) onto `sys.path`, so both tests and `motor_driver_node.py` use the identical fully-qualified import style (`from walker_motor_driver.diff_drive_kinematics import ...`) — no bare same-directory imports anywhere. (Refined from `walker_safety/firmware/tests/conftest.py`'s bare-import pattern: that pattern works for `walker_safety` because its pure modules are never imported as part of an installed package at all, but `walker_motor_driver`'s modules are — a bare import that only resolves via the test-time `sys.path` hack would break the moment the real node imports the same file. Caught in this plan's pre-flight review; see the SDD ledger.)
 
 ---
 
@@ -262,8 +262,21 @@ Create `src/walker_motor_driver/test/conftest.py`:
 import pathlib
 import sys
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / 'walker_motor_driver'))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 ```
+
+This inserts the *outer* `src/walker_motor_driver/` directory (the one
+containing `setup.py`, one level above the inner `walker_motor_driver/`
+package directory) — not the inner package directory itself. Because
+the inner directory has an `__init__.py` (Task 1 Step 5), Python
+resolves `import walker_motor_driver` as a real package find from that
+outer directory, so tests can use the exact same fully-qualified
+import style (`from walker_motor_driver.diff_drive_kinematics import
+...`) that `motor_driver_node.py` (Task 4) uses — no bare
+same-directory imports anywhere, and no divergence between how tests
+import these modules and how the real ROS2 node imports them. This
+still requires no `colcon build`: it's pure `sys.path` manipulation
+against the source tree.
 
 - [ ] **Step 3: Write the failing tests**
 
@@ -274,7 +287,7 @@ import math
 
 import pytest
 
-from diff_drive_kinematics import OdometryTracker, twist_to_wheel_speeds, yaw_to_quaternion
+from walker_motor_driver.diff_drive_kinematics import OdometryTracker, twist_to_wheel_speeds, yaw_to_quaternion
 
 WHEEL_RADIUS_M = 0.03
 WHEEL_SEPARATION_M = 0.2
@@ -381,7 +394,7 @@ cd /home/peter_sha/sourcecode/smart-walker-bot/src/walker_motor_driver
 python3 -m pytest test/test_diff_drive_kinematics.py -v
 ```
 
-Expected: `ModuleNotFoundError: No module named 'diff_drive_kinematics'`.
+Expected: `ModuleNotFoundError: No module named 'walker_motor_driver.diff_drive_kinematics'` (or `No module named 'walker_motor_driver'` if `walker_motor_driver/__init__.py` from Task 1 is somehow missing — either way, a clear import failure, not a passing or silently-skipped test).
 
 - [ ] **Step 5: Implement the kinematics module**
 
@@ -511,7 +524,7 @@ Create `src/walker_motor_driver/test/test_sim_backend.py`:
 ```python
 import pytest
 
-from sim_backend import SimMotorBackend
+from walker_motor_driver.sim_backend import SimMotorBackend
 
 
 def test_zero_speed_gives_zero_delta():
@@ -572,7 +585,7 @@ cd /home/peter_sha/sourcecode/smart-walker-bot/src/walker_motor_driver
 python3 -m pytest test/test_sim_backend.py -v
 ```
 
-Expected: `ModuleNotFoundError: No module named 'sim_backend'`.
+Expected: `ModuleNotFoundError: No module named 'walker_motor_driver.sim_backend'`.
 
 - [ ] **Step 3: Implement the backend interface**
 
@@ -609,7 +622,7 @@ Create `src/walker_motor_driver/walker_motor_driver/sim_backend.py`:
 (docs/superpowers/specs/2026-08-30-phase1-roadmap-design.md Sec 2.4),
 applied to walker_motor_driver specifically.
 """
-from motor_backend import MotorBackend
+from walker_motor_driver.motor_backend import MotorBackend
 
 
 class SimMotorBackend(MotorBackend):
@@ -639,13 +652,16 @@ class SimMotorBackend(MotorBackend):
         return left_delta_rad, right_delta_rad
 ```
 
-Note: this file imports `from motor_backend import MotorBackend` (bare
-module import, not `from walker_motor_driver.motor_backend import
-MotorBackend`) — consistent with the bare-import style
-`test/conftest.py` sets up for tests, and correct at runtime too,
-since both files live in the same `walker_motor_driver/` package
-directory and Python resolves same-directory imports this way whether
-or not the package itself has been `pip install`-ed.
+Note: this file imports `from walker_motor_driver.motor_backend import
+MotorBackend` — the fully-qualified form, matching exactly how
+`motor_driver_node.py` (Task 4) imports `sim_backend` and how
+`test/conftest.py` (Task 2, corrected) sets tests up to import all
+three pure modules. A bare `from motor_backend import MotorBackend`
+would only work by accident under the old (now-corrected) conftest.py
+sys.path setup, and would raise `ModuleNotFoundError` when the package
+actually runs via `ros2 run`/`ros2 launch` in Task 4 — there is only
+ever one import style for these modules in this plan, not a
+test-time-only shortcut.
 
 - [ ] **Step 5: Run tests to verify they pass**
 
