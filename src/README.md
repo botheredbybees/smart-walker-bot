@@ -1,15 +1,15 @@
 # ROS2 workspace
 
-This directory is a `colcon` workspace root. Two packages now exist —
-`walker_safety` and `walker_motor_driver` (the first two build-order
-steps); the remaining three below are still planned. This file records
-the layout so build-order work (see the main [README](../README.md) §6)
-lands in a consistent place.
+This directory is a `colcon` workspace root. Three packages now exist —
+`walker_safety`, `walker_motor_driver` and `walker_nav` (the first three
+build-order steps); the remaining two below are still planned. This file
+records the layout so build-order work (see the main
+[README](../README.md) §6) lands in a consistent place.
 
 Note that `walker_safety` is deliberately *not* a colcon package — its
 watchdog runs on a physically separate Pico, outside the ROS2 graph
-entirely (see its own README). `walker_motor_driver` is a real
-`ament_python` package.
+entirely (see its own README). `walker_motor_driver` and `walker_nav` are
+real `ament_python` packages.
 
 ## Planned packages
 
@@ -20,7 +20,7 @@ entirely (see its own README). `walker_motor_driver` is a real
   commands into wheel speeds (§5.2). Reference:
   [dblanding/diy-ROS-robot](https://github.com/dblanding/diy-ROS-robot) for
   the Pi → driver-board wiring pattern.
-- **`walker_nav`** — thin integration/config layer on top of upstream
+- **Built (SLAM pass; Nav2 pass not started).** **`walker_nav`** — thin integration/config layer on top of upstream
   `slam_toolbox` and `nav2`, not a reimplementation of SLAM or path
   planning (§5.2, §7 risk notes on scope).
 - **`walker_llm_bridge`** — voice I/O (STT/TTS) and the connection to the
@@ -59,6 +59,17 @@ PYTHONNOUSERSITE=1 colcon build --packages-select walker_motor_driver --symlink-
 source install/setup.bash
 
 python3 -m pytest walker_motor_driver/test/ -v   # pure-module unit tests, no ROS sourcing needed
+```
+
+Build/test `walker_nav`:
+
+```bash
+source /opt/ros/humble/setup.bash
+cd src
+PYTHONNOUSERSITE=1 colcon build --packages-select walker_nav --symlink-install
+source install/setup.bash
+
+python3 -m pytest walker_nav/test/ -v   # pure-module unit tests, no ROS sourcing needed
 ```
 
 (`PYTHONNOUSERSITE=1` works around a workstation-specific setuptools/jaraco.functools version

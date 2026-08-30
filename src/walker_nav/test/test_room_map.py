@@ -57,6 +57,37 @@ def test_scan_room_rejects_non_positive_num_beams():
                   num_beams=0, max_range_m=8.0)
 
 
+def test_cast_ray_asymmetric_position_distinguishes_forward_from_backward_hits():
+    distance = cast_ray(1.0, 0.0, 0.0, max_range_m=8.0)
+    assert distance == pytest.approx(1.0, rel=1e-6)
+
+
+def test_cast_ray_doorway_edge_blocked_just_outside_gap():
+    distance = cast_ray(0.6, 0.0, math.pi / 2, max_range_m=8.0)
+    assert distance == pytest.approx(1.5, rel=1e-6)
+
+
+def test_cast_ray_doorway_edge_open_just_inside_gap():
+    distance = cast_ray(0.4, 0.0, math.pi / 2, max_range_m=8.0)
+    assert distance == pytest.approx(3.5, rel=1e-6)
+
+
+def test_scan_room_nonzero_theta_shifts_beams():
+    angle_min_rad = -math.pi
+    angle_increment_rad = (2 * math.pi) / 8
+    ranges_theta_zero = scan_room(
+        0.0, 0.0, 0.0,
+        angle_min_rad=angle_min_rad, angle_increment_rad=angle_increment_rad,
+        num_beams=8, max_range_m=8.0,
+    )
+    ranges_theta_shifted = scan_room(
+        0.0, 0.0, angle_increment_rad,
+        angle_min_rad=angle_min_rad, angle_increment_rad=angle_increment_rad,
+        num_beams=8, max_range_m=8.0,
+    )
+    assert ranges_theta_shifted[0] == pytest.approx(ranges_theta_zero[1], rel=1e-6)
+
+
 def test_yaw_from_quaternion_identity_gives_zero():
     assert yaw_from_quaternion(0.0, 1.0) == pytest.approx(0.0, abs=1e-9)
 

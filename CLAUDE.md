@@ -4,9 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Two packages exist under `src/`: `walker_safety` (E-stop wiring docs + Pico watchdog firmware -
-not a colcon package, see its own README) and `walker_motor_driver` (a real `ament_python` ROS2
-node - differential-drive motor control backed by a simulator until real hardware exists).
+Three packages exist under `src/`: `walker_safety` (E-stop wiring docs + Pico watchdog
+firmware - not a colcon package, see its own README), `walker_motor_driver` (a real
+`ament_python` ROS2 node - differential-drive motor control backed by a simulator until real
+hardware exists), and `walker_nav` (a real `ament_python` ROS2 package - a simulated LiDAR
+feeding `slam_toolbox` for mapping, backed by a fixed hardcoded room until real hardware
+exists; Nav2/path-planning is a separate, not-yet-started follow-up).
 
 Build/test `walker_motor_driver`:
 
@@ -17,12 +20,21 @@ PYTHONNOUSERSITE=1 colcon build --packages-select walker_motor_driver --symlink-
 python3 -m pytest walker_motor_driver/test/ -v   # pure-module unit tests, no ROS sourcing needed
 ```
 
+Build/test `walker_nav`:
+
+```bash
+source /opt/ros/humble/setup.bash
+cd src
+PYTHONNOUSERSITE=1 colcon build --packages-select walker_nav --symlink-install
+python3 -m pytest walker_nav/test/ -v   # pure-module unit tests, no ROS sourcing needed
+```
+
 (`PYTHONNOUSERSITE=1` works around a workstation-specific setuptools/jaraco.functools version
 mismatch between this machine's user-site Python packages and what ROS2 Humble's apt packages
 expect - not a general ROS2 requirement, and may not be needed on other machines.)
 
-Remaining planned packages (`walker_nav`, `walker_llm_bridge`, `walker_companion_app`) don't
-exist yet.
+Remaining planned packages (`walker_llm_bridge`, `walker_companion_app`) don't exist yet, and a
+Nav2 (path planning) pass for `walker_nav` is planned but not started.
 
 ## What this project is
 

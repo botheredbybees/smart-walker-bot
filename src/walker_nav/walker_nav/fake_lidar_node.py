@@ -42,17 +42,47 @@ class FakeLidarNode(Node):
         self._x_m = 0.0
         self._y_m = 0.0
         self._theta_rad = 0.0
+        self._odom_stamp = None
+        self._received_first_odom = False
 
         self._odom_sub = self.create_subscription(Odometry, 'odom', self._on_odom, 10)
         self._scan_pub = self.create_publisher(LaserScan, 'scan', 10)
         self._timer = self.create_timer(1.0 / scan_rate_hz, self._on_timer)
 
     def _on_odom(self, msg):
-        self._x_m = msg.pose.pose.position.x
-        self._y_m = msg.pose.pose.position.y
-        self._theta_rad = yaw_from_quaternion(
-            msg.pose.pose.orientation.z, msg.pose.pose.orientation.w
-        )
+        x_m = msg.pose.pose.position.x
+        y_m = msg.pose.pose.position.y
+        qz = msg.pose.pose.orientation.z
+        qw = msg.pose.pose.orientation.w
+
+        if not (math.isfinite(x_m) and math.isfinite(y_m) and math.isfinite(qz) and math.isfinite(qw)):
+            # A malformed pose must never corrupt the room simulation or
+            # get ray-cast against - keep the last known-good pose
+            # instead. A non-finite pose would otherwise make every beam
+            # report max range, which slam_toolbox reads as a long "all
+            # clear" ray straight through already-mapped walls.
+            self.get_logger().warn(
+                'Ignoring non-finite /odom pose - keeping last known pose.',
+                throttle_duration_sec=5.0,
+            )
+            return
+
+        if not self._received_first_odom:
+            self._received_first_odom = True
+            distance_from_origin_m = math.hypot(x_m, y_m)
+            if distance_from_origin_m > 0.5:
+                self.get_logger().warn(
+                    f'First /odom pose ({x_m:.2f}, {y_m:.2f}) is '
+                    f'{distance_from_origin_m:.2f}m from the origin - '
+                    'room_map.py assumes the room origin coincides with the '
+                    'odometry origin (design spec Sec 2.3); that assumption '
+                    'may no longer hold.'
+                )
+
+        self._x_m = x_m
+        self._y_m = y_m
+        self._theta_rad = yaw_from_quaternion(qz, qw)
+        self._odom_stamp = msg.header.stamp
 
     def _on_timer(self):
         ranges = scan_room(
@@ -61,7 +91,12 @@ class FakeLidarNode(Node):
             self._num_beams, self._max_range_m,
         )
         msg = LaserScan()
-        msg.header.stamp = self.get_clock().now().to_msg()
+        # Stamp with the pose's own odometry time when available, not
+        # "now" - the pose can be up to one /odom period old by the time
+        # this timer fires, and stamping with the pose's real time keeps
+        # the scan and the odom->base_link TF lookup slam_toolbox does
+        # for it consistent.
+        msg.header.stamp = self._odom_stamp if self._odom_stamp is not None else self.get_clock().now().to_msg()
         msg.header.frame_id = 'base_link'
         msg.angle_min = self._angle_min_rad
         msg.angle_max = self._angle_min_rad + (self._num_beams - 1) * self._angle_increment_rad
