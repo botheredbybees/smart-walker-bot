@@ -65,13 +65,13 @@ async function pollMap() {
     const scaleY = canvas.height / grid.height;
     const imageData = ctx.createImageData(canvas.width, canvas.height);
 
-    for (let gy = 0; gy < grid.height; gy++) {
-      for (let gx = 0; gx < grid.width; gx++) {
+    for (let py = 0; py < canvas.height; py++) {
+      for (let px = 0; px < canvas.width; px++) {
+        const gx = Math.min(grid.width - 1, Math.floor(px / scaleX));
+        const sourceRowFromTop = Math.min(grid.height - 1, Math.floor(py / scaleY));
+        const gy = grid.height - 1 - sourceRowFromTop;
         const value = grid.data[gy * grid.width + gx];
         const shade = value < 0 ? 128 : 255 - Math.round((value / 100) * 255);
-        const px = Math.floor(gx * scaleX);
-        // Flip Y: row 0 is the grid's bottom row in ROS convention, but canvas row 0 is the top.
-        const py = Math.floor((grid.height - 1 - gy) * scaleY);
         const idx = (py * canvas.width + px) * 4;
         imageData.data[idx] = shade;
         imageData.data[idx + 1] = shade;
