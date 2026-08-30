@@ -3,6 +3,15 @@ from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
+# NOTE: the default 'text' backend (text_io_backend.py's TextIoBackend) reads
+# sys.stdin, but `ros2 launch` never connects a launched node's stdin to
+# anything - the launch service holds it open and does not feed it, so a
+# node started this way hangs forever waiting for input that never arrives.
+# For interactive use with the 'text' backend, run the node directly instead:
+#     ros2 run walker_llm_bridge llm_bridge_node
+# This launch file remains for future backends (e.g. real STT/TTS) that
+# don't depend on a real stdin.
+
 
 def generate_launch_description():
     backend_arg = DeclareLaunchArgument(

@@ -27,6 +27,7 @@ Usage (after `colcon build --packages-select walker_llm_bridge` and
 Exits 0 and prints PASS on success, exits 1 and prints FAIL otherwise.
 """
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -36,6 +37,8 @@ import time
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Empty, String
+
+from walker_llm_bridge.llm_bridge_node import OLLAMA_UNREACHABLE_MESSAGE
 
 
 class VerifyNode(Node):
@@ -88,8 +91,13 @@ def main():
     try:
         time.sleep(2.0)  # let the node finish declaring parameters/subscriptions
 
-        fifo_write.write('hello there\n')
-        fifo_write.flush()
+        try:
+            fifo_write.write('hello there\n')
+            fifo_write.flush()
+        except BrokenPipeError:
+            print('FAIL: node process exited before reading stdin - check the package is '
+                  'built and the workspace is sourced')
+            return 1
         if not _spin_until(node, lambda: len(node.text_in_messages) >= 1, timeout_s=5.0):
             print('FAIL: no /llm_bridge/text_in echo received within 5s')
             return 1
@@ -97,13 +105,26 @@ def main():
             print(f"FAIL: /llm_bridge/text_in echoed {node.text_in_messages[0]!r}, expected 'hello there'")
             return 1
 
-        if not _spin_until(node, lambda: len(node.text_out_messages) >= 1, timeout_s=30.0):
-            print('FAIL: no /llm_bridge/text_out response received within 30s (Ollama round-trip)')
+        # 40s, not the client's own 30s ollama_timeout_s - a wide-enough
+        # margin that a slow-but-working server's real reply and the node's
+        # own OLLAMA_UNREACHABLE_MESSAGE fallback (checked below) don't race
+        # this loop's own timeout for which failure message wins.
+        if not _spin_until(node, lambda: len(node.text_out_messages) >= 1, timeout_s=40.0):
+            print('FAIL: no /llm_bridge/text_out response received within 40s (Ollama round-trip)')
+            return 1
+        if node.text_out_messages[0] == OLLAMA_UNREACHABLE_MESSAGE:
+            print('FAIL: node returned its Ollama-unreachable fallback - the server was '
+                  'not actually reached (this check does not exercise that path)')
             return 1
         print(f'Round-trip response: {node.text_out_messages[0]!r}')
 
-        fifo_write.write('stop\n')
-        fifo_write.flush()
+        try:
+            fifo_write.write('stop\n')
+            fifo_write.flush()
+        except BrokenPipeError:
+            print('FAIL: node process exited before reading stdin - check the package is '
+                  'built and the workspace is sourced')
+            return 1
         if not _spin_until(node, lambda: node.stop_requested_count >= 1, timeout_s=5.0):
             print('FAIL: /llm_bridge/stop_requested did not fire within 5s')
             return 1
@@ -123,6 +144,7 @@ def main():
         node.destroy_node()
         rclpy.shutdown()
         fifo_write.close()
+        shutil.rmtree(fifo_dir, ignore_errors=True)
         # node_process.pid is only the `ros2` wrapper - `ros2 run` forks the
         # actual llm_bridge_node as a separate child via subprocess.Popen()
         # internally (not an exec-replace), so signaling node_process.pid

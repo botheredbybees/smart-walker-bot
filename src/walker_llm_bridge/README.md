@@ -55,6 +55,27 @@ python3 -m pytest test/ -v
 
 No ROS environment or colcon build needed for these.
 
+## Running the node
+
+For interactive use with the `text` backend (the only one implemented so far), run the node
+directly with `ros2 run`, **not** `ros2 launch`:
+
+```bash
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 run walker_llm_bridge llm_bridge_node --ros-args -p ollama_host:=192.168.1.20 -p ollama_model:=qwen2.5:14b
+```
+
+(override any of the other declared parameters the same way, e.g. `-p ollama_timeout_s:=30.0`).
+
+`ros2 launch walker_llm_bridge llm_bridge.launch.py` does **not** work for the `text` backend
+today: `TextIoBackend` reads `sys.stdin`, but `ros2 launch` never connects a launched node's
+stdin to anything, so the node hangs forever waiting for input that never arrives, with no
+error. This is exactly why `tools/verify_llm_bridge.py` launches the node via `ros2 run` (with
+a named pipe standing in for a real terminal's stdin) instead of using this launch file. The
+launch file still exists for future backends — e.g. once a real STT/TTS backend removes the
+stdin dependency, `ros2 launch` will work normally.
+
 ## Voice "stop" is a convenience signal only
 
 `/llm_bridge/stop_requested` has no consumer in this pass. Nothing
