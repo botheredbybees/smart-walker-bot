@@ -158,11 +158,15 @@ src/walker_llm_bridge/
 `requests.post` mocked via `unittest.mock.patch`, no ROS sourcing needed, same pattern as
 `diff_drive_kinematics.py`/`watchdog_logic.py`.
 
-`tools/verify_llm_bridge.py` — scripted (not pytest) end-to-end check: launch the node with the
-`text` backend, publish to `/llm_bridge/text_in`, and confirm a real round-trip response arrives
-on `/llm_bridge/text_out` from the actual reachable Ollama server — plus a second case sending a
-stop utterance and confirming `/llm_bridge/stop_requested` fires and no `/llm_bridge/text_out`
-response is produced for that message (i.e. Ollama was not called).
+`tools/verify_llm_bridge.py` — scripted (not pytest) end-to-end check. `/llm_bridge/text_in` is
+published *by* the node (§2.4) — the node's only real utterance path is the backend (§2.1) — so
+driving the conversation from a script means injecting into the `text` backend's actual stdin,
+not publishing to a topic. The script launches the node with its stdin redirected from a named
+pipe (`mkfifo`), writes an utterance line to that pipe, and confirms: (1) that same text arrives
+echoed on `/llm_bridge/text_in`, (2) a real round-trip response arrives on `/llm_bridge/text_out`
+from the actual reachable Ollama server. A second case writes a stop utterance to the pipe and
+confirms `/llm_bridge/stop_requested` fires and no new `/llm_bridge/text_out` message is produced
+for that line (i.e. Ollama was not called).
 
 ## 6. Out of scope
 
