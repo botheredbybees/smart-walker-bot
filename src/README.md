@@ -23,8 +23,9 @@ real `ament_python` packages.
 - **Built (SLAM + Nav2).** **`walker_nav`** — thin integration/config layer on top of upstream
   `slam_toolbox` and `nav2`, not a reimplementation of SLAM or path
   planning (§5.2, §7 risk notes on scope).
-- **`walker_llm_bridge`** — voice I/O (STT/TTS) and the connection to the
-  Ollama server for the conversational layer (§5.3).
+- **Built (text bridge).** **`walker_llm_bridge`** — text-based
+  conversational bridge to the Ollama server (§5.3); real STT/TTS and
+  nav-goal translation still deferred (see the package's own README).
 - **`walker_companion_app`** — the optional local dashboard (§5.5), last
   in the build order.
 
@@ -70,6 +71,17 @@ PYTHONNOUSERSITE=1 colcon build --packages-select walker_nav --symlink-install
 source install/setup.bash
 
 python3 -m pytest walker_nav/test/ -v   # pure-module unit tests, no ROS sourcing needed
+```
+
+Build/test `walker_llm_bridge`:
+
+```bash
+source /opt/ros/humble/setup.bash
+cd src
+PYTHONNOUSERSITE=1 colcon build --packages-select walker_llm_bridge --symlink-install
+source install/setup.bash
+
+python3 -m pytest walker_llm_bridge/test/ -v   # pure-module unit tests, no ROS sourcing needed
 ```
 
 (`PYTHONNOUSERSITE=1` works around a workstation-specific setuptools/jaraco.functools version

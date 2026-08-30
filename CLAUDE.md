@@ -4,13 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Three packages exist under `src/`: `walker_safety` (E-stop wiring docs + Pico watchdog
+Four packages exist under `src/`: `walker_safety` (E-stop wiring docs + Pico watchdog
 firmware - not a colcon package, see its own README), `walker_motor_driver` (a real
 `ament_python` ROS2 node - differential-drive motor control backed by a simulator until real
-hardware exists), and `walker_nav` (a real `ament_python` ROS2 package - a simulated LiDAR
+hardware exists), `walker_nav` (a real `ament_python` ROS2 package - a simulated LiDAR
 feeding `slam_toolbox` for mapping, backed by a fixed hardcoded room until real hardware
 exists; Nav2 navigates autonomously against that live map, using `nav2_bringup`'s own
-navigation stack).
+navigation stack), and `walker_llm_bridge` (a real `ament_python` ROS2 package - a
+text-based conversational bridge to an Ollama server; real STT/TTS and nav-goal
+translation still deferred to hardware bring-up).
 
 Build/test `walker_motor_driver`:
 
@@ -30,11 +32,20 @@ PYTHONNOUSERSITE=1 colcon build --packages-select walker_nav --symlink-install
 python3 -m pytest walker_nav/test/ -v   # pure-module unit tests, no ROS sourcing needed
 ```
 
+Build/test `walker_llm_bridge`:
+
+```bash
+source /opt/ros/humble/setup.bash
+cd src
+PYTHONNOUSERSITE=1 colcon build --packages-select walker_llm_bridge --symlink-install
+python3 -m pytest walker_llm_bridge/test/ -v   # pure-module unit tests, no ROS sourcing needed
+```
+
 (`PYTHONNOUSERSITE=1` works around a workstation-specific setuptools/jaraco.functools version
 mismatch between this machine's user-site Python packages and what ROS2 Humble's apt packages
 expect - not a general ROS2 requirement, and may not be needed on other machines.)
 
-Remaining planned packages (`walker_llm_bridge`, `walker_companion_app`) don't exist yet.
+The remaining planned package (`walker_companion_app`) doesn't exist yet.
 
 ## What this project is
 
