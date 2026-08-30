@@ -16,8 +16,8 @@ node the way other packages' verify scripts do, since stdin redirection
 can only be wired up at process-creation time.
 
 Requires the real Ollama server (config default: 192.168.1.20:11434,
-model qwen3.5-9b-64k:latest) to be reachable - there is no mocking here,
-unlike test_ollama_client.py.
+model qwen2.5:14b) to be reachable - there is no mocking here, unlike
+test_ollama_client.py.
 
 Usage (after `colcon build --packages-select walker_llm_bridge` and
 `source install/setup.bash` from src/):
@@ -27,6 +27,7 @@ Usage (after `colcon build --packages-select walker_llm_bridge` and
 Exits 0 and prints PASS on success, exits 1 and prints FAIL otherwise.
 """
 import os
+import signal
 import subprocess
 import sys
 import tempfile
@@ -74,6 +75,7 @@ def main():
         shell=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        start_new_session=True,
     )
 
     # Blocks until node_process's shell redirection opens the FIFO's read
@@ -121,11 +123,23 @@ def main():
         node.destroy_node()
         rclpy.shutdown()
         fifo_write.close()
-        node_process.terminate()
+        # node_process.pid is only the `ros2` wrapper - `ros2 run` forks the
+        # actual llm_bridge_node as a separate child via subprocess.Popen()
+        # internally (not an exec-replace), so signaling node_process.pid
+        # alone would orphan the real node. start_new_session=True above put
+        # the wrapper (and its forked child, which inherits the same process
+        # group) in their own process group, so signal that group instead.
+        try:
+            os.killpg(os.getpgid(node_process.pid), signal.SIGTERM)
+        except ProcessLookupError:
+            pass
         try:
             node_process.wait(timeout=5.0)
         except subprocess.TimeoutExpired:
-            node_process.kill()
+            try:
+                os.killpg(os.getpgid(node_process.pid), signal.SIGKILL)
+            except ProcessLookupError:
+                pass
             node_process.wait()
 
 
