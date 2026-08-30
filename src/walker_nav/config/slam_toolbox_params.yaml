@@ -4,6 +4,5 @@ slam_toolbox:
     map_frame: map
     base_frame: base_link
     scan_topic: /scan
-    mode: mapping
     resolution: 0.05
     max_laser_range: 8.0
