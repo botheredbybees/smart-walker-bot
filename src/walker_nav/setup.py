@@ -22,7 +22,7 @@ setup(
     zip_safe=True,
     maintainer='botheredbybees',
     maintainer_email='botheredbybees@gmail.com',
-    description='SLAM integration layer for smart-walker-bot: a simulated LiDAR (ray-cast against a fixed room) feeding slam_toolbox, until real hardware exists.',
+    description='SLAM + Nav2 integration layer for smart-walker-bot: a simulated LiDAR feeding slam_toolbox, and nav2_bringup\'s navigation stack configured against the live map, until real hardware exists.',
     license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={

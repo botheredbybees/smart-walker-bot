@@ -20,7 +20,7 @@ real `ament_python` packages.
   commands into wheel speeds (§5.2). Reference:
   [dblanding/diy-ROS-robot](https://github.com/dblanding/diy-ROS-robot) for
   the Pi → driver-board wiring pattern.
-- **Built (SLAM pass; Nav2 pass not started).** **`walker_nav`** — thin integration/config layer on top of upstream
+- **Built (SLAM + Nav2).** **`walker_nav`** — thin integration/config layer on top of upstream
   `slam_toolbox` and `nav2`, not a reimplementation of SLAM or path
   planning (§5.2, §7 risk notes on scope).
 - **`walker_llm_bridge`** — voice I/O (STT/TTS) and the connection to the

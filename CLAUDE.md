@@ -9,7 +9,8 @@ firmware - not a colcon package, see its own README), `walker_motor_driver` (a r
 `ament_python` ROS2 node - differential-drive motor control backed by a simulator until real
 hardware exists), and `walker_nav` (a real `ament_python` ROS2 package - a simulated LiDAR
 feeding `slam_toolbox` for mapping, backed by a fixed hardcoded room until real hardware
-exists; Nav2/path-planning is a separate, not-yet-started follow-up).
+exists; Nav2 navigates autonomously against that live map, using `nav2_bringup`'s own
+navigation stack).
 
 Build/test `walker_motor_driver`:
 
@@ -33,8 +34,7 @@ python3 -m pytest walker_nav/test/ -v   # pure-module unit tests, no ROS sourcin
 mismatch between this machine's user-site Python packages and what ROS2 Humble's apt packages
 expect - not a general ROS2 requirement, and may not be needed on other machines.)
 
-Remaining planned packages (`walker_llm_bridge`, `walker_companion_app`) don't exist yet, and a
-Nav2 (path planning) pass for `walker_nav` is planned but not started.
+Remaining planned packages (`walker_llm_bridge`, `walker_companion_app`) don't exist yet.
 
 ## What this project is
 

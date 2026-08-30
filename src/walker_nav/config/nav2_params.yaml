@@ -1,3 +1,32 @@
+# Copied from nav2_bringup's own reference config
+# (/opt/ros/humble/share/nav2_bringup/params/nav2_params.yaml), ROS2
+# Humble, with exactly one deliberate change: robot_radius (0.22 -> 0.15)
+# in both local_costmap and global_costmap, to match this project's
+# placeholder robot footprint (see walker_nav's README). Verified
+# byte-identical to the upstream file otherwise - see
+# docs/superpowers/plans/2026-08-30-walker-nav-nav2.md Task 1.
+#
+# Several sections below are present but INERT for this project's setup:
+# - amcl / map_server / map_saver: unused - Nav2 navigates against
+#   slam_toolbox's live map, not a saved static map with AMCL
+#   localization (design spec Sec 2.1). launch/nav2.launch.py only
+#   includes nav2_bringup's navigation_launch.py, which never starts
+#   these nodes.
+# - Every "use_sim_time: True" below (15 occurrences) is rewritten to
+#   False at launch time by navigation_launch.py's RewrittenYaml
+#   mechanism, driven by the use_sim_time launch argument
+#   nav2.launch.py passes explicitly. The "True" values here are
+#   upstream's own defaults and are NOT what actually takes effect -
+#   see nav2.launch.py's own comment for why this doesn't need fixing
+#   the way slam_toolbox's use_sim_time default did.
+#
+# inflation_radius (0.55, both costmap sections) was evaluated against
+# this project's 1m-wide doorway (room_map.py) and left at its stock
+# value: at cost_scaling_factor=3.0, the doorway centerline sits at
+# cost ~88/252 (not zero) - this works today because there's no
+# alternate route for the planner to prefer instead, but would bias
+# planning away from tight passages if a second route ever existed.
+# Left as-is rather than tuned blind; revisit if that changes.
 amcl:
   ros__parameters:
     use_sim_time: True
