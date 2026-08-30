@@ -1,2 +1,115 @@
 <!DOCTYPE html>
-<html><body>placeholder</body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Walker Companion</title>
+<style>
+  body { font-family: sans-serif; margin: 1rem; }
+  canvas#map { border: 1px solid #333; background: #eee; }
+  #conversation { max-height: 200px; overflow-y: auto; border: 1px solid #ccc; padding: 0.5rem; }
+  .role-user { font-weight: bold; }
+  .role-assistant { color: #333; }
+  #alerts { background: #f0f0f0; padding: 0.5rem; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>Walker Companion</h1>
+
+<section id="status-section">
+  <h2>Status</h2>
+  <p>Pose: x=<span id="pose-x">-</span>, y=<span id="pose-y">-</span>, theta=<span id="pose-theta">-</span></p>
+  <p>Nav status: <span id="nav-status">-</span></p>
+</section>
+
+<section id="map-section">
+  <h2>Map</h2>
+  <canvas id="map" width="400" height="400"></canvas>
+</section>
+
+<section id="alerts-section">
+  <h2>Alerts</h2>
+  <div id="alerts">No anomaly detection configured yet.</div>
+</section>
+
+<section id="conversation-section">
+  <h2>Conversation</h2>
+  <div id="conversation"></div>
+</section>
+
+<script>
+const POLL_INTERVAL_MS = 2000;
+
+async function pollStatus() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    document.getElementById('pose-x').textContent = data.pose.x.toFixed(2);
+    document.getElementById('pose-y').textContent = data.pose.y.toFixed(2);
+    document.getElementById('pose-theta').textContent = data.pose.theta.toFixed(2);
+    document.getElementById('nav-status').textContent = data.nav_status;
+  } catch (e) {
+    console.error('status poll failed', e);
+  }
+}
+
+async function pollMap() {
+  try {
+    const res = await fetch('/api/map');
+    const grid = await res.json();
+    const canvas = document.getElementById('map');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (grid.width === 0 || grid.height === 0) return;
+
+    const scaleX = canvas.width / grid.width;
+    const scaleY = canvas.height / grid.height;
+    const imageData = ctx.createImageData(canvas.width, canvas.height);
+
+    for (let gy = 0; gy < grid.height; gy++) {
+      for (let gx = 0; gx < grid.width; gx++) {
+        const value = grid.data[gy * grid.width + gx];
+        const shade = value < 0 ? 128 : 255 - Math.round((value / 100) * 255);
+        const px = Math.floor(gx * scaleX);
+        // Flip Y: row 0 is the grid's bottom row in ROS convention, but canvas row 0 is the top.
+        const py = Math.floor((grid.height - 1 - gy) * scaleY);
+        const idx = (py * canvas.width + px) * 4;
+        imageData.data[idx] = shade;
+        imageData.data[idx + 1] = shade;
+        imageData.data[idx + 2] = shade;
+        imageData.data[idx + 3] = 255;
+      }
+    }
+    ctx.putImageData(imageData, 0, 0);
+  } catch (e) {
+    console.error('map poll failed', e);
+  }
+}
+
+async function pollConversation() {
+  try {
+    const res = await fetch('/api/conversation');
+    const entries = await res.json();
+    const container = document.getElementById('conversation');
+    container.innerHTML = '';
+    for (const entry of entries) {
+      const p = document.createElement('p');
+      p.className = 'role-' + entry.role;
+      p.textContent = entry.role + ': ' + entry.text;
+      container.appendChild(p);
+    }
+  } catch (e) {
+    console.error('conversation poll failed', e);
+  }
+}
+
+function pollAll() {
+  pollStatus();
+  pollMap();
+  pollConversation();
+}
+
+pollAll();
+setInterval(pollAll, POLL_INTERVAL_MS);
+</script>
+</body>
+</html>
