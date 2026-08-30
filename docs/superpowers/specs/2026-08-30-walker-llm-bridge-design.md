@@ -23,9 +23,12 @@ have hard prerequisites this project doesn't have yet:
   (`src/walker_nav/walker_nav/room_map.py`) is still a fixed, unnamed two-room sim floor plan
   with nothing to translate "the shed" or similar into.
 
-The Ollama connection itself has no such blocker — the target server
-(`192.168.1.20:11434`, model `qwen3.5-9b-64k:latest`) is reachable from this workstation right
-now. This design scopes the package to what's actually buildable and testable today: a
+The Ollama connection itself has no such blocker — the target server (`192.168.1.20:11434`) is
+reachable from this workstation right now. (The model tag was later corrected during
+implementation — see `docs/superpowers/plans/2026-08-30-walker-llm-bridge.md`'s Global
+Constraints: `qwen3.5-9b-64k:latest` is listed by the server but hangs indefinitely on
+`/api/chat`; `qwen2.5:14b` is the working default.) This design scopes the package to what's
+actually buildable and testable today: a
 conversational bridge over text, with the sim/real boundary drawn explicitly so voice I/O can be
 added later without changing this pass's node logic — the same boundary discipline
 `walker_motor_driver`'s `MotorBackend` used for the sim/GPIO split
@@ -142,7 +145,7 @@ src/walker_llm_bridge/
 | `voice_io_backend` | `text` | only `text` implemented this pass |
 | `ollama_host` | `192.168.1.20` | |
 | `ollama_port` | `11434` | Ollama's default |
-| `ollama_model` | `qwen3.5-9b-64k:latest` | confirmed present on the target server |
+| `ollama_model` | `qwen2.5:14b` | corrected during implementation — `qwen3.5-9b-64k:latest` is listed by the server but hangs indefinitely on `/api/chat`; see plan Global Constraints |
 | `ollama_timeout_s` | `30.0` | |
 | `system_prompt` | short companion-robot persona string | |
 | `max_history_messages` | `20` | |

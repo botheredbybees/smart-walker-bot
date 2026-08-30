@@ -14,11 +14,11 @@
 
 - Real `ament_python` colcon package, buildable with `colcon build --packages-select walker_llm_bridge` from `src/` (spec §2.1).
 - `VoiceIOBackend` interface: `start(on_utterance) -> None` (registers a callback invoked with each utterance's text), `speak(text) -> None`, `stop() -> None`. `TextIoBackend` is the only implementation this pass. (spec §2.1)
-- Ollama target: host `192.168.1.20`, port `11434`, model `qwen3.5-9b-64k:latest` — confirmed present and reachable via `curl http://192.168.1.20:11434/api/tags` during design. `ollama_client.py`'s `OllamaClient.chat(messages) -> str` raises `OllamaError` on any connection failure, timeout, or malformed response. (spec §2.2)
+- Ollama target: host `192.168.1.20`, port `11434`, model `qwen2.5:14b` — corrected during Task 5 execution (see ledger ruling): `qwen3.5-9b-64k:latest` is *listed* by `/api/tags` but hangs indefinitely on `/api/chat` (confirmed via two independent 30s+ timeouts with zero bytes returned, and `/api/ps` showing it never starts loading), while `qwen2.5:14b` round-trips in ~12-17s on the same server. `ollama_client.py`'s `OllamaClient.chat(messages) -> str` raises `OllamaError` on any connection failure, timeout, or malformed response. (spec §2.2)
 - Stop-intent matching (`stop_intent.py`'s `is_stop_utterance(text) -> bool`) is **exact match** against a fixed phrase list (`stop`, `halt`, `stop now`, `emergency stop`), case-insensitive, after stripping whitespace — not substring matching. This is a refinement beyond the spec's "simple... phrase list" wording, chosen specifically to avoid false positives on sentences merely containing "stop" as a word (e.g. "don't stop the car", "stopwatch"), decided during planning and enforced by `test_stop_intent.py`'s explicit negative cases. (spec §2.3)
 - `/llm_bridge/stop_requested` (`std_msgs/Empty`) has no consumer this pass — publish-only, never wired to anything that acts. (spec §2.3)
 - `/llm_bridge/text_in` and `/llm_bridge/text_out` (both `std_msgs/String`) are **published by the node** — `text_in` echoes what the backend heard, `text_out` carries the response. The node does not subscribe to either. (spec §2.4, corrected)
-- Params: `voice_io_backend` (default `text`), `ollama_host` (`192.168.1.20`), `ollama_port` (`11434`), `ollama_model` (`qwen3.5-9b-64k:latest`), `ollama_timeout_s` (`30.0`), `system_prompt` (companion-robot persona default), `max_history_messages` (`20`). (spec §4)
+- Params: `voice_io_backend` (default `text`), `ollama_host` (`192.168.1.20`), `ollama_port` (`11434`), `ollama_model` (`qwen2.5:14b`, corrected per the ruling above), `ollama_timeout_s` (`30.0`), `system_prompt` (companion-robot persona default), `max_history_messages` (`20`). (spec §4)
 - Conversation history is in-memory only, capped at `max_history_messages`, oldest entries dropped first — no disk persistence. (spec §2.4)
 - No real STT/TTS backend and no nav-goal translation in this pass. (spec §6)
 - `tools/verify_llm_bridge.py` launches the node itself (via `subprocess.Popen` with a named-pipe stdin), rather than assuming a separately-launched node the way `walker_motor_driver`/`walker_nav`'s verify scripts do — a deliberate deviation, since stdin redirection can only be wired up at process-creation time, not attached to an already-running process. (spec §5, refined during planning)
@@ -778,7 +778,7 @@ class LlmBridgeNode(Node):
         self.declare_parameter('voice_io_backend', 'text')
         self.declare_parameter('ollama_host', '192.168.1.20')
         self.declare_parameter('ollama_port', 11434)
-        self.declare_parameter('ollama_model', 'qwen3.5-9b-64k:latest')
+        self.declare_parameter('ollama_model', 'qwen2.5:14b')
         self.declare_parameter('ollama_timeout_s', 30.0)
         self.declare_parameter(
             'system_prompt',
@@ -902,7 +902,7 @@ def generate_launch_description():
             'voice_io_backend': LaunchConfiguration('voice_io_backend'),
             'ollama_host': '192.168.1.20',
             'ollama_port': 11434,
-            'ollama_model': 'qwen3.5-9b-64k:latest',
+            'ollama_model': 'qwen2.5:14b',
             'ollama_timeout_s': 30.0,
             'max_history_messages': 20,
         }],
@@ -934,8 +934,8 @@ node the way other packages' verify scripts do, since stdin redirection
 can only be wired up at process-creation time.
 
 Requires the real Ollama server (config default: 192.168.1.20:11434,
-model qwen3.5-9b-64k:latest) to be reachable - there is no mocking here,
-unlike test_ollama_client.py.
+model qwen2.5:14b) to be reachable - there is no mocking here, unlike
+test_ollama_client.py.
 
 Usage (after `colcon build --packages-select walker_llm_bridge` and
 `source install/setup.bash` from src/):
@@ -1071,13 +1071,15 @@ source install/setup.bash
 
 Expected: `Summary: 1 package finished`.
 
-- [ ] **Step 7: Confirm Ollama is reachable before the end-to-end run**
+- [ ] **Step 7: Confirm Ollama is reachable AND the configured model actually responds**
+
+Being listed by `/api/tags` is not sufficient — during this plan's execution, `qwen3.5-9b-64k:latest` was listed but hung indefinitely on `/api/chat` (a server-side model-loading problem, unrelated to this package). Do a real round-trip against the configured model instead of just checking the tag list:
 
 ```bash
-curl -s --max-time 3 http://192.168.1.20:11434/api/tags | head -c 300
+curl -s --max-time 30 http://192.168.1.20:11434/api/chat -d '{"model":"qwen2.5:14b","messages":[{"role":"user","content":"Say hi in five words or less."}],"stream":false}'
 ```
 
-Expected: JSON containing `"models"` with `qwen3.5-9b-64k:latest` listed. If this fails, the Ollama server is down or unreachable from this workstation right now — fix that before running Step 8, since `verify_llm_bridge.py` has no fallback path for this case (unlike the node's own `OllamaError` handling, which this check does not exercise).
+Expected: a JSON response with a non-empty `message.content` within 30s. If this times out with zero bytes back, the configured model is not actually servable right now even though it may appear in `/api/tags` — check `curl http://192.168.1.20:11434/api/ps` to see whether it's even attempting to load, fix the server-side issue or pick a model that responds, and only then proceed to Step 8. `verify_llm_bridge.py` has no fallback path for this case (unlike the node's own `OllamaError` handling, which this check does not exercise).
 
 - [ ] **Step 8: Run the end-to-end verification**
 
