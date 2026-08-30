@@ -91,15 +91,6 @@ the int list from the message before calling it, keeping the function itself pur
 (no `GoalStatusArray` ever received, or one with zero entries — both happen before any Nav2 goal
 has ever been sent) maps to `"idle"`.
 
-### 2.9 Startup defaults before any subscribed topic has published
-
-`SharedState` is constructed with sane defaults, not `None`/absent fields, so `/api/status` and
-`/api/map` never need to handle a not-yet-populated case as an error: pose `{"x": 0.0, "y": 0.0,
-"theta": 0.0}`, `nav_status` `"idle"` (per §2.5's empty-list default), and an empty/zero-size map
-(`{"width": 0, "height": 0, "resolution": 0.0, "origin_x": 0.0, "origin_y": 0.0, "data": []}`)
-until `/map` publishes at least once. `/api/conversation` starts as whatever `ConversationLog`
-loaded from its file at startup (an empty list if the file doesn't exist yet).
-
 ### 2.6 Live map: server-side primitives to JSON, client-side canvas rendering
 
 `occupancy_grid_json.py`'s pure `grid_to_json(width, height, resolution, origin_x, origin_y,
@@ -128,6 +119,30 @@ This package does not subscribe to or display `/llm_bridge/stop_requested` — i
 and wiring it into this dashboard wasn't requested. Stated explicitly so it isn't added later as
 an assumed extension of the alerts panel.
 
+### 2.9 Pose extraction: pure yaw-from-quaternion, mirroring `walker_nav`'s own simplification
+
+`nav_msgs/Odometry`'s orientation is a quaternion, not a heading — §2.5/§2.6 gave the grid and
+nav-status data their own pure conversion functions, and pose needs the same treatment rather
+than inline, untested math in the node. `pose_json.py`'s pure `pose_to_json(x, y, quat_z,
+quat_w) -> dict` returns `{"x": x, "y": y, "theta": yaw}`, computing `yaw = 2 * atan2(quat_z,
+quat_w)` — valid because this is a planar ground robot with zero roll/pitch, the same
+simplification `walker_nav/walker_nav/room_map.py`'s own `yaw_from_quaternion` uses, for the
+same reason. Implemented independently in this package rather than importing `walker_nav`'s
+version (rejected: no package in this project currently imports another package's Python code
+across the `src/` boundary, and adding the first such cross-package import for one three-line
+trig formula isn't worth the coupling — package.xml would need a `<depend>walker_nav</depend>`
+for a package that is otherwise about serving already-published topics, not about SLAM/nav
+internals).
+
+### 2.10 Startup defaults before any subscribed topic has published
+
+`SharedState` is constructed with sane defaults, not `None`/absent fields, so `/api/status` and
+`/api/map` never need to handle a not-yet-populated case as an error: pose `{"x": 0.0, "y": 0.0,
+"theta": 0.0}`, `nav_status` `"idle"` (per §2.5's empty-list default), and an empty/zero-size map
+(`{"width": 0, "height": 0, "resolution": 0.0, "origin_x": 0.0, "origin_y": 0.0, "data": []}`)
+until `/map` publishes at least once. `/api/conversation` starts as whatever `ConversationLog`
+loaded from its file at startup (an empty list if the file doesn't exist yet).
+
 ## 3. Package structure
 
 New `ament_python` package:
@@ -138,6 +153,7 @@ src/walker_companion_app/
   walker_companion_app/
     __init__.py
     conversation_log.py      (pure: ConversationLog - ring buffer + JSON-lines file I/O)
+    pose_json.py             (pure: pose_to_json, yaw_from_quaternion)
     occupancy_grid_json.py   (pure: grid_to_json)
     nav_status.py            (pure: status_code_to_label)
     shared_state.py          (pure: SharedState, threading.Lock-guarded)
@@ -149,6 +165,7 @@ src/walker_companion_app/
   test/
     conftest.py
     test_conversation_log.py
+    test_pose_json.py
     test_occupancy_grid_json.py
     test_nav_status.py
     test_shared_state.py
@@ -184,7 +201,7 @@ src/walker_companion_app/
 
 ## 5. Testing
 
-`conversation_log.py`, `occupancy_grid_json.py`, `nav_status.py`, `shared_state.py`, and
+`conversation_log.py`, `pose_json.py`, `occupancy_grid_json.py`, `nav_status.py`, `shared_state.py`, and
 `http_handler.py`'s `build_response` are pure Python — unit-tested with pytest, no ROS sourcing
 or colcon build required, same `test/conftest.py` `sys.path` pattern as every other package here.
 `conversation_log.py`'s file I/O is tested against a real temp file (via `tmp_path`), not mocked
