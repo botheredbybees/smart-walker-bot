@@ -83,19 +83,29 @@ check. Kill all four launched processes when done, and check
 docstring and `walker_nav`'s README for why a plain `kill` isn't always
 enough.
 
-On this specific dev workstation, port 8080 is permanently occupied by
-an unrelated pre-existing service, so the dashboard node's launch above
-needs an explicit override — `ros2 launch walker_companion_app
-dashboard_app.launch.py http_port:=8081` (or another free port) — and
-`verify_dashboard_app.py`'s `HTTP_BASE` constant must match whatever
-port was used.
+The command block above and `verify_dashboard_app.py` agree on the
+dashboard's default port (8080): the launch line passes no `http_port`
+argument, and the script falls back to `http://localhost:8080` when the
+`WALKER_DASHBOARD_URL` environment variable isn't set. If you need a
+different port — for example, **on this specific dev workstation**,
+where port 8080 is permanently occupied by an unrelated pre-existing
+service — override both together so they still agree:
+
+```bash
+ros2 launch walker_companion_app dashboard_app.launch.py http_port:=8081 &
+...
+WALKER_DASHBOARD_URL=http://localhost:8081 python3 walker_companion_app/tools/verify_dashboard_app.py
+```
 
 ## Visiting the dashboard yourself
 
 With the stack above running, open `http://localhost:8080/` (or
 `http://<this-machine's-LAN-IP>:8080/` from another device on the same
 home network, e.g. a phone — the server binds all interfaces, not just
-localhost).
+localhost). **On this specific dev workstation**, port 8080 is occupied
+by an unrelated pre-existing service, so the dashboard is launched with
+`http_port:=8081` instead (see above) — visit `http://localhost:8081/`
+(or the LAN-IP equivalent) here instead.
 
 ## Fall/anomaly alerts are not wired up
 

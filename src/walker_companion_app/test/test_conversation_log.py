@@ -71,3 +71,19 @@ def test_blank_lines_in_file_skipped(tmp_path):
 
     log = ConversationLog(str(log_path), buffer_size=50)
     assert len(log.entries()) == 2
+
+
+def test_corrupt_line_in_file_skipped(tmp_path):
+    log_path = tmp_path / 'conv.jsonl'
+    with open(log_path, 'w') as f:
+        f.write(json.dumps({'role': 'user', 'text': 'hi', 'timestamp': 1.0}) + '\n')
+        f.write('{"role": "user", "text": "unterminat\n')
+        f.write(json.dumps({'role': 'assistant', 'text': 'hello', 'timestamp': 2.0}) + '\n')
+
+    log = ConversationLog(str(log_path), buffer_size=50)
+    entries = log.entries()
+    assert len(entries) == 2
+    assert entries == [
+        {'role': 'user', 'text': 'hi', 'timestamp': 1.0},
+        {'role': 'assistant', 'text': 'hello', 'timestamp': 2.0},
+    ]

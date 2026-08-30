@@ -56,7 +56,14 @@ class DashboardAppNode(Node):
         handler_class = make_handler_class(self._state, index_html)
         # 0.0.0.0, not just localhost - README Sec 5.5 wants this reachable
         # from a phone on the home network, not just this workstation.
-        self._http_server = ThreadingHTTPServer(('0.0.0.0', http_port), handler_class)
+        try:
+            self._http_server = ThreadingHTTPServer(('0.0.0.0', http_port), handler_class)
+        except OSError as e:
+            raise RuntimeError(
+                f"Could not bind the dashboard HTTP server to port {http_port}: {e}. "
+                f"If the port is already in use, pass a different one via the launch file's "
+                f"http_port argument (e.g. http_port:=8081)."
+            ) from e
         self._http_thread = threading.Thread(target=self._http_server.serve_forever, daemon=True)
         self._http_thread.start()
 
@@ -85,6 +92,7 @@ class DashboardAppNode(Node):
     def stop(self):
         self._http_server.shutdown()
         self._http_thread.join(timeout=5.0)
+        self._http_server.server_close()
 
 
 def main(args=None):

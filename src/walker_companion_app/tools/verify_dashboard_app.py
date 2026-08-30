@@ -34,7 +34,7 @@ from nav2_msgs.action import NavigateToPose
 from rclpy.action import ActionClient
 from rclpy.node import Node
 
-HTTP_BASE = 'http://localhost:8081'
+HTTP_BASE = os.environ.get('WALKER_DASHBOARD_URL', 'http://localhost:8080')
 
 
 def _get_json(path):

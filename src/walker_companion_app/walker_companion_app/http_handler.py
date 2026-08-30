@@ -38,11 +38,14 @@ def make_handler_class(shared_state, index_html):
             status_code, content_type, body = build_response(
                 self.path, status_snapshot, map_snapshot, conversation_snapshot, index_html
             )
-            self.send_response(status_code)
-            self.send_header('Content-Type', content_type)
-            self.send_header('Content-Length', str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+            try:
+                self.send_response(status_code)
+                self.send_header('Content-Type', content_type)
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                pass  # client disconnected mid-response - not our problem, don't log a traceback
 
         def log_message(self, format, *args):
             pass  # suppress BaseHTTPRequestHandler's default stderr access log

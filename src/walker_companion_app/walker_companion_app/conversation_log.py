@@ -30,7 +30,10 @@ class ConversationLog:
                 line = line.strip()
                 if not line:
                     continue
-                self._entries.append(json.loads(line))
+                try:
+                    self._entries.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue  # skip a torn line (e.g. power loss mid-append)
         self._trim()
 
     def _trim(self):
