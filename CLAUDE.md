@@ -4,15 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Four packages exist under `src/`: `walker_safety` (E-stop wiring docs + Pico watchdog
+Five packages exist under `src/`: `walker_safety` (E-stop wiring docs + Pico watchdog
 firmware - not a colcon package, see its own README), `walker_motor_driver` (a real
 `ament_python` ROS2 node - differential-drive motor control backed by a simulator until real
 hardware exists), `walker_nav` (a real `ament_python` ROS2 package - a simulated LiDAR
 feeding `slam_toolbox` for mapping, backed by a fixed hardcoded room until real hardware
 exists; Nav2 navigates autonomously against that live map, using `nav2_bringup`'s own
-navigation stack), and `walker_llm_bridge` (a real `ament_python` ROS2 package - a
+navigation stack), `walker_llm_bridge` (a real `ament_python` ROS2 package - a
 text-based conversational bridge to an Ollama server; real STT/TTS and nav-goal
-translation still deferred to hardware bring-up).
+translation still deferred to hardware bring-up), and `walker_companion_app` (a real
+`ament_python` ROS2 package - a local-network web dashboard over a stdlib HTTP server,
+serving robot pose, Nav2 status, a live map, and the conversation log; fall/anomaly
+alerts are a static placeholder, no IMU subsystem exists yet).
 
 Build/test `walker_motor_driver`:
 
@@ -41,11 +44,20 @@ PYTHONNOUSERSITE=1 colcon build --packages-select walker_llm_bridge --symlink-in
 python3 -m pytest walker_llm_bridge/test/ -v   # pure-module unit tests, no ROS sourcing needed
 ```
 
+Build/test `walker_companion_app`:
+
+```bash
+source /opt/ros/humble/setup.bash
+cd src
+PYTHONNOUSERSITE=1 colcon build --packages-select walker_companion_app --symlink-install
+python3 -m pytest walker_companion_app/test/ -v   # pure-module unit tests, no ROS sourcing needed
+```
+
 (`PYTHONNOUSERSITE=1` works around a workstation-specific setuptools/jaraco.functools version
 mismatch between this machine's user-site Python packages and what ROS2 Humble's apt packages
 expect - not a general ROS2 requirement, and may not be needed on other machines.)
 
-The remaining planned package (`walker_companion_app`) doesn't exist yet.
+All five planned Phase 1 packages now exist.
 
 ## What this project is
 

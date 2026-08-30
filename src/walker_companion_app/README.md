@@ -52,6 +52,51 @@ python3 -m pytest test/ -v
 
 No ROS environment or colcon build needed for these.
 
+## Running the end-to-end check
+
+Requires four nodes launched first, in this order (matches
+`walker_nav`'s own documented sequencing for the shared SLAM/Nav2
+prerequisites):
+
+```bash
+source /opt/ros/humble/setup.bash
+cd src
+PYTHONNOUSERSITE=1 colcon build --packages-select walker_motor_driver walker_nav walker_llm_bridge walker_companion_app --symlink-install
+source install/setup.bash
+
+ros2 launch walker_motor_driver motor_driver.launch.py &
+ros2 launch walker_nav walker_nav.launch.py &
+sleep 3
+ros2 launch walker_nav nav2.launch.py &
+sleep 10
+ros2 launch walker_companion_app dashboard_app.launch.py &
+sleep 2
+
+python3 walker_companion_app/tools/verify_dashboard_app.py
+```
+
+This script launches `walker_llm_bridge`'s node itself (the same
+FIFO-stdin trick `walker_llm_bridge/tools/verify_llm_bridge.py` uses)
+and requires the real Ollama server reachable for the conversation-log
+check. Kill all four launched processes when done, and check
+`ps aux` for anything still running — see this package's own script's
+docstring and `walker_nav`'s README for why a plain `kill` isn't always
+enough.
+
+On this specific dev workstation, port 8080 is permanently occupied by
+an unrelated pre-existing service, so the dashboard node's launch above
+needs an explicit override — `ros2 launch walker_companion_app
+dashboard_app.launch.py http_port:=8081` (or another free port) — and
+`verify_dashboard_app.py`'s `HTTP_BASE` constant must match whatever
+port was used.
+
+## Visiting the dashboard yourself
+
+With the stack above running, open `http://localhost:8080/` (or
+`http://<this-machine's-LAN-IP>:8080/` from another device on the same
+home network, e.g. a phone — the server binds all interfaces, not just
+localhost).
+
 ## Fall/anomaly alerts are not wired up
 
 The dashboard's alerts panel is static placeholder text — no topic, no

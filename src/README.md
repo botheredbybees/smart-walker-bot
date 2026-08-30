@@ -26,8 +26,10 @@ real `ament_python` packages.
 - **Built (text bridge).** **`walker_llm_bridge`** — text-based
   conversational bridge to the Ollama server (§5.3); real STT/TTS and
   nav-goal translation still deferred (see the package's own README).
-- **`walker_companion_app`** — the optional local dashboard (§5.5), last
-  in the build order.
+- **Built.** **`walker_companion_app`** — local-network web dashboard:
+  robot pose, Nav2 status, live map, and the `walker_llm_bridge`
+  conversation log (§5.5). Fall/anomaly alerts are a static placeholder
+  — see the package's own README.
 
 ## Setup
 
@@ -82,6 +84,17 @@ PYTHONNOUSERSITE=1 colcon build --packages-select walker_llm_bridge --symlink-in
 source install/setup.bash
 
 python3 -m pytest walker_llm_bridge/test/ -v   # pure-module unit tests, no ROS sourcing needed
+```
+
+Build/test `walker_companion_app`:
+
+```bash
+source /opt/ros/humble/setup.bash
+cd src
+PYTHONNOUSERSITE=1 colcon build --packages-select walker_companion_app --symlink-install
+source install/setup.bash
+
+python3 -m pytest walker_companion_app/test/ -v   # pure-module unit tests, no ROS sourcing needed
 ```
 
 (`PYTHONNOUSERSITE=1` works around a workstation-specific setuptools/jaraco.functools version
