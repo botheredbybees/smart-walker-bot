@@ -50,6 +50,15 @@ values look wildly wrong (all zeros, all identical, or magnitude far from 1g), c
 wiring and the `_MPU9250_ADDR`/register constants in `firmware/imu_reader.py` against your
 specific breakout board's datasheet.
 
+**Accelerometer range vs. `impact_threshold_g`:** `firmware/imu_reader.py` explicitly configures
+the accelerometer's full-scale range to ±8g (saturating at `32767 / 4096 ≈ 8.0g`) rather than
+leaving it at the chip's power-on-reset ±2g default. This range and `anomaly_detection_node.py`'s
+(and `launch/anomaly_detection.launch.py`'s) `impact_threshold_g` parameter must be considered
+together — if you change one, check the other still makes sense. In particular,
+`impact_threshold_g` must stay comfortably below the range's saturation point, or a real impact
+could clip before ever crossing the threshold (this is exactly what happened with the old ±2g
+default and the 2.0g threshold).
+
 Once real samples look sane:
 
 ```bash

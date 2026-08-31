@@ -49,6 +49,7 @@ class AnomalyDetectionNode(Node):
 
         self._alert_pub = self.create_publisher(String, '/anomaly_detected', 10)
 
+        self._stopping = False
         self._serial_conn = serial.Serial(serial_port, baud_rate, timeout=1.0)
         self._read_thread = threading.Thread(target=self._read_loop, daemon=True)
         self._read_thread.start()
@@ -57,10 +58,18 @@ class AnomalyDetectionNode(Node):
         try:
             read_samples(self._serial_conn, self._on_sample)
         except Exception as e:
-            self.get_logger().error(
-                f'IMU serial read loop terminated unexpectedly: {e}. '
-                'Anomaly detection has stopped - the node needs to be restarted.'
-            )
+            if self._stopping:
+                # Expected: stop() closes the serial connection while
+                # this thread may be blocked in readline(), which
+                # raises here. Not a failure - don't log it as one.
+                self.get_logger().debug(
+                    f'IMU serial read loop ended due to intentional shutdown: {e}'
+                )
+            else:
+                self.get_logger().error(
+                    f'IMU serial read loop terminated unexpectedly: {e}. '
+                    'Anomaly detection has stopped - the node needs to be restarted.'
+                )
 
     def _on_sample(self, sample):
         now_s = self.get_clock().now().nanoseconds / 1e9
@@ -84,6 +93,7 @@ class AnomalyDetectionNode(Node):
         self.get_logger().warning(f'Anomaly detected: {alert_type}')
 
     def stop(self):
+        self._stopping = True
         try:
             self._serial_conn.close()
         except Exception:

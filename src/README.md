@@ -1,10 +1,11 @@
 # ROS2 workspace
 
-This directory is a `colcon` workspace root. Three packages now exist —
-`walker_safety`, `walker_motor_driver` and `walker_nav` (the first three
-build-order steps); the remaining two below are still planned. This file
-records the layout so build-order work (see the main
-[README](../README.md) §6) lands in a consistent place.
+This directory is a `colcon` workspace root. Six packages now exist —
+`walker_safety`, `walker_motor_driver`, `walker_nav`, `walker_llm_bridge`,
+`walker_companion_app`, and `walker_anomaly_detection` — see the "Planned
+packages" list below for each one's status. This file records the layout
+so build-order work (see the main [README](../README.md) §6) lands in a
+consistent place.
 
 Note that `walker_safety` is deliberately *not* a colcon package — its
 watchdog runs on a physically separate Pico, outside the ROS2 graph

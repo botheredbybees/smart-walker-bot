@@ -14,7 +14,8 @@ REQUIRED_KEYS = ('ax', 'ay', 'az', 'gx', 'gy', 'gz', 'mx', 'my', 'mz', 't_ms')
 def parse_sample_line(line):
     """Parse one JSON-line IMU sample. Returns a dict with keys ax, ay,
     az, gx, gy, gz, mx, my, mz, t_ms on success, or None on malformed
-    JSON or a missing expected key - never raises."""
+    JSON, a missing expected key, or a non-numeric value (e.g. null or
+    a bool) for one of those keys - never raises."""
     try:
         data = json.loads(line)
     except (ValueError, TypeError):
@@ -22,6 +23,11 @@ def parse_sample_line(line):
     if not isinstance(data, dict):
         return None
     if not all(key in data for key in REQUIRED_KEYS):
+        return None
+    if not all(
+        isinstance(data.get(key), (int, float)) and not isinstance(data.get(key), bool)
+        for key in REQUIRED_KEYS
+    ):
         return None
     return data
 

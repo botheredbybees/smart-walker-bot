@@ -93,9 +93,9 @@ def main():
         print('Fall event received.')
 
         # --- Tilt scenario: sustained tilt past the 3.0s duration threshold ---
-        # tilt_from_accel_deg(9.8, 0.0, 0.0) == 90 degrees, well past the 45-degree default.
+        # tilt_from_accel_deg(1.0, 0.0, 0.0) == 90 degrees, well past the 45-degree default.
         for i in range(40):  # ~4s at 0.1s spacing, past the 3.0s sustained-duration default
-            os.write(controller_fd, _sample_line(9.8, 0.0, 0.0, 300 + i * 100).encode())
+            os.write(controller_fd, _sample_line(1.0, 0.0, 0.0, 300 + i * 100).encode())
             time.sleep(0.1)
             rclpy.spin_once(node, timeout_sec=0.1)
 
