@@ -151,6 +151,26 @@ Task 5 decision (`docs/superpowers/specs/2026-08-30-walker-companion-app-design.
 its alerts panel static this pass — that package needs its own follow-up task to subscribe and
 replace the placeholder text.
 
+### 2.10 Automated node-level verification via a virtual serial pair, not real hardware
+
+`tools/verify_anomaly_detection.py` does not require the real ESP32+IMU connected. It uses
+Python's stdlib `pty.openpty()` to create a virtual serial device pair, points the node's
+`serial_port` param at one end, and writes synthetic JSON-line samples (constructed free-fall +
+impact and sustained-tilt sequences, the same shapes the pure-module tests already use) to the
+other end — then subscribes to `/anomaly_detected` and confirms both event types are published as
+expected. This verifies the full node wiring (serial read → parse → both detectors → publish)
+end to end, fully automated, matching every other package's scripted `verify_X.py` pattern.
+Chosen over requiring real hardware for this check (rejected: nothing about the node's own wiring
+logic actually depends on a real accelerometer being attached — only genuine sensor *validation*
+does, which stays a separate manual step per below). Confirmed this is a real departure worth
+making during plan-writing, since the original framing below would have made this the only
+package in the project with no automated E2E check at all, even though the underlying logic is no
+less testable than any other package's.
+
+Real hardware validation — does an actual accelerometer drop/tilt produce sensible values on the
+real IMU — remains a separate, genuinely manual step, documented in `docs/bring_up.md`. That part
+can't be automated; the wiring can be, and now is.
+
 ## 3. Package structure
 
 New `ament_python` package:
@@ -178,9 +198,8 @@ src/walker_anomaly_detection/
     test_tilt_detector.py
     test_imu_serial.py
   tools/
-    verify_anomaly_detection.py (manual/scripted check requiring the real ESP32+IMU connected -
-                                  cannot be a fully-automated E2E script the way sim-first
-                                  packages' verify scripts are, since there's no fake IMU backend)
+    verify_anomaly_detection.py (scripted, fully automated end-to-end check via a pty-backed
+                                  virtual serial pair - no real ESP32/IMU required, per §2.10)
 ```
 
 ## 4. Interface
@@ -215,14 +234,21 @@ NOT trigger; a sustained-tilt sequence past the duration threshold triggers a ti
 transient tilt that recovers before the duration threshold does NOT trigger; a malformed JSON line
 is skipped by `imu_serial.py`'s parser rather than crashing the node.
 
-`anomaly_detection_node.py` and `firmware/imu_reader.py` are not pytest-testable — they require a
-real serial connection and real IMU hardware. `tools/verify_anomaly_detection.py` is a manual,
-not fully automated, check: with the ESP32 flashed and connected, it subscribes to
-`/anomaly_detected` and prompts the operator to perform a real drop/impact motion and a real
-sustained-tilt motion with the IMU, confirming each produces the expected event type. This mirrors
-`walker_safety`'s own hardware-bring-up-required treatment (`tools/send_fake_heartbeats.py` is
-the closest existing precedent for a manual, hardware-attached verification tool in this project)
-rather than the fully-automated E2E scripts the sim-first packages achieved.
+`anomaly_detection_node.py` is not pytest-testable (same reason every other package's `rclpy`
+node isn't — the pure-module `conftest.py` sys.path pattern deliberately excludes `rclpy`-dependent
+code), but per §2.10 it IS fully, automatically verified: `tools/verify_anomaly_detection.py`
+launches the node against a `pty`-backed virtual serial pair, feeds it synthetic JSON-line samples
+constructed to trigger both a fall and a tilt event, and confirms both arrive on
+`/anomaly_detected` — no real hardware needed, matching every other package's scripted
+`verify_X.py` pattern.
+
+`firmware/imu_reader.py` is genuinely not testable except on real hardware — it's a thin loop
+reading real I2C registers. Real IMU sensor validation (does an actual drop/tilt on the physical
+device produce sensible readings) is a separate, manual step documented in `docs/bring_up.md`,
+mirroring `walker_safety`'s own hardware-bring-up-required treatment
+(`tools/send_fake_heartbeats.py` is the closest existing precedent for a manual, hardware-attached
+verification tool in this project) — but unlike the original framing, this manual step is now
+narrowly scoped to "does the sensor itself work," not "does the whole pipeline work."
 
 ## 6. Out of scope
 
