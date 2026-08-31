@@ -1,3 +1,5 @@
+import pytest
+
 from walker_anomaly_detection.imu_serial import parse_sample_line, read_samples
 
 VALID_LINE = (
@@ -33,6 +35,11 @@ def test_empty_string_returns_none():
     assert parse_sample_line('') is None
 
 
+class _TestComplete(Exception):
+    """Sentinel exception to signal end of test data."""
+    pass
+
+
 class _FakeSerial:
     def __init__(self, lines):
         self._lines = iter(lines)
@@ -41,7 +48,7 @@ class _FakeSerial:
         try:
             return next(self._lines)
         except StopIteration:
-            return b''
+            raise _TestComplete()
 
 
 def test_read_samples_calls_callback_per_valid_line():
@@ -52,12 +59,21 @@ def test_read_samples_calls_callback_per_valid_line():
     ]
     fake = _FakeSerial(lines)
     received = []
-    read_samples(fake, received.append)
+    with pytest.raises(_TestComplete):
+        read_samples(fake, received.append)
     assert len(received) == 2
 
 
-def test_read_samples_stops_on_empty_bytes():
-    fake = _FakeSerial([b''])
+def test_read_samples_continues_past_empty_bytes_timeout():
+    """Empty/timeout reads (b'') should NOT stop the loop; a real line
+    after one or more empty reads should still be processed. Only a raised
+    exception stops the loop."""
+    lines = [
+        b'',  # simulates a timeout with no data
+        (VALID_LINE + '\n').encode('utf-8'),
+    ]
+    fake = _FakeSerial(lines)
     received = []
-    read_samples(fake, received.append)
-    assert received == []
+    with pytest.raises(_TestComplete):
+        read_samples(fake, received.append)
+    assert len(received) == 1

@@ -30,12 +30,13 @@ def read_samples(serial_conn, on_sample):
     """Blocking loop: reads lines from serial_conn (anything with a
     readline() -> bytes method), decodes and parses each one, and calls
     on_sample(sample_dict) for each successfully parsed sample.
-    Malformed lines are silently skipped. Runs until
-    serial_conn.readline() returns empty bytes (connection closed)."""
+    Malformed lines are silently skipped. Empty/timeout reads (b'') are
+    silently skipped too — only a raised exception (e.g. SerialException
+    on a genuinely disconnected port) stops the loop."""
     while True:
         raw_line = serial_conn.readline()
         if not raw_line:
-            break
+            continue
         line = raw_line.decode('utf-8', errors='replace').strip()
         if not line:
             continue
