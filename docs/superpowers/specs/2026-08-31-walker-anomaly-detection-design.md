@@ -71,6 +71,15 @@ or a missing expected key — never raises. The node skips a `None` result rathe
 port) is a separate, un-pure function/method in the same file, calling `parse_sample_line` per
 line read.
 
+**Units:** `ax, ay, az` are in **g** (1g = 9.80665 m/s² of sensed acceleration) — the firmware
+converts from its configured full-scale-range ADC counts to g before ever writing the JSON line,
+so the ROS2 side never needs to know that scale factor and `FallDetector`/`tilt_from_accel_deg`
+can consume `ax`/`ay`/`az` directly with no unit conversion. `gx, gy, gz` (gyroscope) and
+`mx, my, mz` (magnetometer) are captured because a 9-axis IMU naturally provides them and it costs
+nothing to stream them, but neither detector in this pass consumes them (§2.4's fall detector
+uses only accelerometer magnitude; §2.5's tilt estimate is deliberately accelerometer-only, no
+gyro fusion) — they exist for future extensibility, not because this design needs them yet.
+
 ### 2.4 Fall detection: two-stage free-fall → impact pattern
 
 `fall_detector.py`'s pure `FallDetector` tracks accelerometer magnitude
