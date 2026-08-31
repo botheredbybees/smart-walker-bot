@@ -54,7 +54,13 @@ class AnomalyDetectionNode(Node):
         self._read_thread.start()
 
     def _read_loop(self):
-        read_samples(self._serial_conn, self._on_sample)
+        try:
+            read_samples(self._serial_conn, self._on_sample)
+        except Exception as e:
+            self.get_logger().error(
+                f'IMU serial read loop terminated unexpectedly: {e}. '
+                'Anomaly detection has stopped - the node needs to be restarted.'
+            )
 
     def _on_sample(self, sample):
         now_s = self.get_clock().now().nanoseconds / 1e9
