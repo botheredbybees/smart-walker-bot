@@ -30,6 +30,13 @@ real `ament_python` packages.
   robot pose, Nav2 status, live map, and the `walker_llm_bridge`
   conversation log (§5.5). Fall/anomaly alerts are a static placeholder
   — see the package's own README.
+- **Built (pure logic + node; hardware bring-up pending).** **`walker_anomaly_detection`** —
+  fall/anomaly detection via a real ESP32-streamed 9-axis IMU: free-fall+impact and
+  sustained-tilt detection, publishing `/anomaly_detected` alerts. A new addition beyond the
+  original five-package roadmap — root `README.md` §5.2 originally assigned this to
+  `walker_motor_driver`, but it was never implemented there. First package developed against
+  real hardware rather than simulation; see the package's own README and `docs/bring_up.md`.
+  Wiring `/anomaly_detected` into `walker_companion_app`'s dashboard is a separate follow-up.
 
 ## Setup
 
@@ -95,6 +102,17 @@ PYTHONNOUSERSITE=1 colcon build --packages-select walker_companion_app --symlink
 source install/setup.bash
 
 python3 -m pytest walker_companion_app/test/ -v   # pure-module unit tests, no ROS sourcing needed
+```
+
+Build/test `walker_anomaly_detection`:
+
+```bash
+source /opt/ros/humble/setup.bash
+cd src
+PYTHONNOUSERSITE=1 colcon build --packages-select walker_anomaly_detection --symlink-install
+source install/setup.bash
+
+python3 -m pytest walker_anomaly_detection/test/ -v   # pure-module unit tests, no ROS sourcing needed
 ```
 
 (`PYTHONNOUSERSITE=1` works around a workstation-specific setuptools/jaraco.functools version

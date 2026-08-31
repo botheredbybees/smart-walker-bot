@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Five packages exist under `src/`: `walker_safety` (E-stop wiring docs + Pico watchdog
+Six packages exist under `src/`: `walker_safety` (E-stop wiring docs + Pico watchdog
 firmware - not a colcon package, see its own README), `walker_motor_driver` (a real
 `ament_python` ROS2 node - differential-drive motor control backed by a simulator until real
 hardware exists), `walker_nav` (a real `ament_python` ROS2 package - a simulated LiDAR
@@ -12,10 +12,15 @@ feeding `slam_toolbox` for mapping, backed by a fixed hardcoded room until real 
 exists; Nav2 navigates autonomously against that live map, using `nav2_bringup`'s own
 navigation stack), `walker_llm_bridge` (a real `ament_python` ROS2 package - a
 text-based conversational bridge to an Ollama server; real STT/TTS and nav-goal
-translation still deferred to hardware bring-up), and `walker_companion_app` (a real
+translation still deferred to hardware bring-up), `walker_companion_app` (a real
 `ament_python` ROS2 package - a local-network web dashboard over a stdlib HTTP server,
-serving robot pose, Nav2 status, a live map, and the conversation log; fall/anomaly
-alerts are a static placeholder, no IMU subsystem exists yet).
+serving robot pose, Nav2 status, a live map, and the conversation log), and
+`walker_anomaly_detection` (a real `ament_python` ROS2 package - fall/anomaly detection via
+a real ESP32-streamed 9-axis IMU, the first package developed against real hardware rather
+than simulation; ESP32 wiring/bring-up is still pending, but the node's own logic is fully
+verified via a pty-backed virtual serial pair - see the package's own README). Wiring
+`walker_anomaly_detection`'s alerts into `walker_companion_app`'s dashboard is a separate,
+not-yet-started follow-up.
 
 Build/test `walker_motor_driver`:
 
@@ -53,11 +58,21 @@ PYTHONNOUSERSITE=1 colcon build --packages-select walker_companion_app --symlink
 python3 -m pytest walker_companion_app/test/ -v   # pure-module unit tests, no ROS sourcing needed
 ```
 
+Build/test `walker_anomaly_detection`:
+
+```bash
+source /opt/ros/humble/setup.bash
+cd src
+PYTHONNOUSERSITE=1 colcon build --packages-select walker_anomaly_detection --symlink-install
+python3 -m pytest walker_anomaly_detection/test/ -v   # pure-module unit tests, no ROS sourcing needed
+```
+
 (`PYTHONNOUSERSITE=1` works around a workstation-specific setuptools/jaraco.functools version
 mismatch between this machine's user-site Python packages and what ROS2 Humble's apt packages
 expect - not a general ROS2 requirement, and may not be needed on other machines.)
 
-All five planned Phase 1 packages now exist.
+All five originally planned Phase 1 packages exist, plus `walker_anomaly_detection` — a sixth
+package added beyond the original roadmap (see its own README for why).
 
 ## What this project is
 
