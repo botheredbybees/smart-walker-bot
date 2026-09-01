@@ -58,6 +58,36 @@ def _ray_segment_intersection(px, py, dx, dy, x1, y1, x2, y2):
     return None
 
 
+def fov_to_scan_params(fov_deg, num_beams):
+    """Compute (angle_min_rad, angle_increment_rad) for a LaserScan-style
+    beam fan, given a horizontal field of view in degrees and a beam
+    count - the sensor_msgs/LaserScan angle_min/angle_increment
+    convention scan_room and fake_lidar_node.py both use directly.
+
+    fov_deg >= 360 reproduces the original full-circle formula exactly:
+    a full circle deliberately does not place a beam at both -180 and
+    +180 degrees (the same physical direction), hence dividing by
+    num_beams rather than num_beams - 1.
+
+    fov_deg < 360 produces a non-wrapping arc whose first and last beams
+    land exactly on the FOV's two edges (-fov_rad/2 and +fov_rad/2),
+    which requires num_beams >= 2 - a single beam can't have two
+    distinct edges.
+    """
+    if fov_deg <= 0:
+        raise ValueError("fov_deg must be positive")
+    if num_beams <= 0:
+        raise ValueError("num_beams must be positive")
+
+    if fov_deg >= 360:
+        return -math.pi, (2.0 * math.pi) / num_beams
+
+    if num_beams < 2:
+        raise ValueError("num_beams must be at least 2 when fov_deg < 360")
+    fov_rad = math.radians(fov_deg)
+    return -fov_rad / 2.0, fov_rad / (num_beams - 1)
+
+
 def scan_room(x_m, y_m, theta_rad, angle_min_rad, angle_increment_rad, num_beams, max_range_m):
     """Return a list of num_beams range readings, one per beam, starting
     at theta_rad + angle_min_rad and stepping by angle_increment_rad -

@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from walker_nav.room_map import cast_ray, scan_room, yaw_from_quaternion
+from walker_nav.room_map import cast_ray, fov_to_scan_params, scan_room, yaw_from_quaternion
 
 
 def test_cast_ray_hits_right_wall_at_known_distance():
@@ -106,3 +106,40 @@ def test_yaw_from_quaternion_round_trips_for_several_angles():
         half = yaw / 2.0
         recovered = yaw_from_quaternion(math.sin(half), math.cos(half))
         assert recovered == pytest.approx(yaw, rel=1e-6)
+
+
+def test_fov_to_scan_params_full_circle_matches_existing_formula():
+    angle_min_rad, angle_increment_rad = fov_to_scan_params(fov_deg=360, num_beams=360)
+    assert angle_min_rad == pytest.approx(-math.pi, rel=1e-9)
+    assert angle_increment_rad == pytest.approx((2.0 * math.pi) / 360, rel=1e-9)
+
+
+def test_fov_to_scan_params_above_360_still_treated_as_full_circle():
+    angle_min_rad, angle_increment_rad = fov_to_scan_params(fov_deg=400, num_beams=360)
+    assert angle_min_rad == pytest.approx(-math.pi, rel=1e-9)
+    assert angle_increment_rad == pytest.approx((2.0 * math.pi) / 360, rel=1e-9)
+
+
+def test_fov_to_scan_params_narrow_arc_edges_land_on_fov_boundary():
+    fov_deg = 57
+    num_beams = 57
+    angle_min_rad, angle_increment_rad = fov_to_scan_params(fov_deg=fov_deg, num_beams=num_beams)
+    fov_rad = math.radians(fov_deg)
+    assert angle_min_rad == pytest.approx(-fov_rad / 2.0, rel=1e-9)
+    last_beam_angle = angle_min_rad + (num_beams - 1) * angle_increment_rad
+    assert last_beam_angle == pytest.approx(fov_rad / 2.0, rel=1e-9)
+
+
+def test_fov_to_scan_params_narrow_arc_rejects_single_beam():
+    with pytest.raises(ValueError):
+        fov_to_scan_params(fov_deg=57, num_beams=1)
+
+
+def test_fov_to_scan_params_rejects_non_positive_fov_deg():
+    with pytest.raises(ValueError):
+        fov_to_scan_params(fov_deg=0, num_beams=57)
+
+
+def test_fov_to_scan_params_rejects_non_positive_num_beams():
+    with pytest.raises(ValueError):
+        fov_to_scan_params(fov_deg=360, num_beams=0)
