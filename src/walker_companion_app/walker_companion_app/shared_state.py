@@ -17,6 +17,7 @@ class SharedState:
         self._conversation_log = conversation_log
         self._pose = {'x': 0.0, 'y': 0.0, 'theta': 0.0}
         self._nav_status = 'idle'
+        self._gait = {'step_count': 0, 'total_distance_m': 0.0, 'avg_step_length_m': 0.0}
         self._map = {
             'width': 0, 'height': 0, 'resolution': 0.0,
             'origin_x': 0.0, 'origin_y': 0.0, 'data': [],
@@ -30,6 +31,10 @@ class SharedState:
         with self._lock:
             self._nav_status = label
 
+    def set_gait_metrics(self, gait):
+        with self._lock:
+            self._gait = dict(gait)
+
     def set_map(self, grid):
         with self._lock:
             self._map = {**grid, 'data': list(grid['data'])}
@@ -40,7 +45,12 @@ class SharedState:
 
     def status_snapshot(self, timestamp):
         with self._lock:
-            return {'pose': dict(self._pose), 'nav_status': self._nav_status, 'timestamp': timestamp}
+            return {
+                'pose': dict(self._pose),
+                'nav_status': self._nav_status,
+                'gait': dict(self._gait),
+                'timestamp': timestamp,
+            }
 
     def map_snapshot(self):
         with self._lock:

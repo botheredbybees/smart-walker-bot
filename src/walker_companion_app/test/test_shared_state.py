@@ -10,7 +10,12 @@ def _make_state(tmp_path):
 def test_default_status_snapshot(tmp_path):
     state = _make_state(tmp_path)
     snapshot = state.status_snapshot(timestamp=123.0)
-    assert snapshot == {'pose': {'x': 0.0, 'y': 0.0, 'theta': 0.0}, 'nav_status': 'idle', 'timestamp': 123.0}
+    assert snapshot == {
+        'pose': {'x': 0.0, 'y': 0.0, 'theta': 0.0},
+        'nav_status': 'idle',
+        'gait': {'step_count': 0, 'total_distance_m': 0.0, 'avg_step_length_m': 0.0},
+        'timestamp': 123.0,
+    }
 
 
 def test_default_map_snapshot(tmp_path):
@@ -37,6 +42,21 @@ def test_set_nav_status_reflected_in_status_snapshot(tmp_path):
     state.set_nav_status('navigating')
     snapshot = state.status_snapshot(timestamp=1.0)
     assert snapshot['nav_status'] == 'navigating'
+
+
+def test_set_gait_metrics_reflected_in_status_snapshot(tmp_path):
+    state = _make_state(tmp_path)
+    state.set_gait_metrics({'step_count': 42, 'total_distance_m': 84.0, 'avg_step_length_m': 2.0})
+    snapshot = state.status_snapshot(timestamp=1.0)
+    assert snapshot['gait'] == {'step_count': 42, 'total_distance_m': 84.0, 'avg_step_length_m': 2.0}
+
+
+def test_status_snapshot_gait_returns_a_copy(tmp_path):
+    state = _make_state(tmp_path)
+    state.set_gait_metrics({'step_count': 1, 'total_distance_m': 1.0, 'avg_step_length_m': 1.0})
+    snapshot = state.status_snapshot(timestamp=1.0)
+    snapshot['gait']['step_count'] = 999
+    assert state.status_snapshot(timestamp=1.0)['gait']['step_count'] == 1
 
 
 def test_set_map_reflected_in_map_snapshot(tmp_path):

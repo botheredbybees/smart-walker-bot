@@ -33,6 +33,7 @@ from geometry_msgs.msg import Twist
 from nav2_msgs.action import NavigateToPose
 from rclpy.action import ActionClient
 from rclpy.node import Node
+from std_msgs.msg import String
 
 HTTP_BASE = os.environ.get('WALKER_DASHBOARD_URL', 'http://localhost:8080')
 
@@ -46,6 +47,7 @@ class VerifyDriverNode(Node):
     def __init__(self):
         super().__init__('walker_companion_app_verify')
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.gait_pub = self.create_publisher(String, '/gait_metrics', 10)
         self.nav_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
 
 
@@ -79,6 +81,19 @@ def main():
         if not (after['pose']['x'] > before['pose']['x']):
             print(f"FAIL: /api/status pose.x did not increase ({before['pose']['x']} -> {after['pose']['x']})")
             return 1
+
+        # --- Gait metrics appear in /api/status ---
+        gait_payload = json.dumps({'step_count': 42, 'total_distance_m': 84.0, 'avg_step_length_m': 2.0})
+        node.gait_pub.publish(String(data=gait_payload))
+        time.sleep(1.0)
+        status = _get_json('/api/status')
+        if status.get('gait', {}).get('step_count') != 42:
+            print(
+                f"FAIL: /api/status gait.step_count did not reflect published /gait_metrics "
+                f"(got {status.get('gait')})"
+            )
+            return 1
+        print(f"Gait metrics verified: {status['gait']}")
 
         # --- Nav2 status transitions away from idle after a goal ---
         if not node.nav_client.wait_for_server(timeout_sec=10.0):

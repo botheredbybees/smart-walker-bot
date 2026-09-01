@@ -4,6 +4,7 @@ serving the dashboard. See
 docs/superpowers/specs/2026-08-30-walker-companion-app-design.md for the
 full design.
 """
+import json
 import os
 import threading
 from http.server import ThreadingHTTPServer
@@ -52,6 +53,7 @@ class DashboardAppNode(Node):
         )
         self.create_subscription(String, '/llm_bridge/text_in', self._on_text_in, 10)
         self.create_subscription(String, '/llm_bridge/text_out', self._on_text_out, 10)
+        self.create_subscription(String, '/gait_metrics', self._on_gait_metrics, 10)
 
         handler_class = make_handler_class(self._state, index_html)
         # 0.0.0.0, not just localhost - README Sec 5.5 wants this reachable
@@ -88,6 +90,16 @@ class DashboardAppNode(Node):
 
     def _on_text_out(self, msg):
         self._state.add_conversation_entry('assistant', msg.data, self.get_clock().now().nanoseconds / 1e9)
+
+    def _on_gait_metrics(self, msg):
+        try:
+            gait = json.loads(msg.data)
+        except (ValueError, TypeError):
+            self.get_logger().warn(
+                'Ignoring malformed /gait_metrics payload.', throttle_duration_sec=5.0,
+            )
+            return
+        self._state.set_gait_metrics(gait)
 
     def stop(self):
         self._http_server.shutdown()

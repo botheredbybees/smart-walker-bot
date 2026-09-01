@@ -32,11 +32,12 @@ repo's colcon workspace root).
   is a thin `BaseHTTPRequestHandler` binding it to real sockets.
 - `walker_companion_app/dashboard_app_node.py` — the `rclpy` node:
   subscribes `/odom`, `/map`, `/navigate_to_pose/_action/status`,
-  `/llm_bridge/text_in`, `/llm_bridge/text_out`; runs the HTTP server in
+  `/llm_bridge/text_in`, `/llm_bridge/text_out`, `/gait_metrics`; runs the HTTP server in
   a background thread.
 - `web/index.html` — the dashboard page: polls `/api/status`,
   `/api/map`, `/api/conversation` on an interval, renders the map on a
-  `<canvas>`, and shows a static (unwired) alerts placeholder.
+  `<canvas>`, shows gait metrics (step count, distance, average step length), and shows a static
+  (unwired) alerts placeholder.
 - `launch/dashboard_app.launch.py` — launch file with an `http_port`
   argument (default `8080`).
 - `tools/verify_dashboard_app.py` — a scripted (not pytest) end-to-end

@@ -21,6 +21,13 @@
   <p>Nav status: <span id="nav-status">-</span></p>
 </section>
 
+<section id="gait-section">
+  <h2>Gait</h2>
+  <p>Steps: <span id="gait-step-count">-</span></p>
+  <p>Distance: <span id="gait-total-distance">-</span> m</p>
+  <p>Avg step length: <span id="gait-avg-step-length">-</span> m</p>
+</section>
+
 <section id="map-section">
   <h2>Map</h2>
   <canvas id="map" width="400" height="400"></canvas>
@@ -47,6 +54,9 @@ async function pollStatus() {
     document.getElementById('pose-y').textContent = data.pose.y.toFixed(2);
     document.getElementById('pose-theta').textContent = data.pose.theta.toFixed(2);
     document.getElementById('nav-status').textContent = data.nav_status;
+    document.getElementById('gait-step-count').textContent = data.gait.step_count;
+    document.getElementById('gait-total-distance').textContent = data.gait.total_distance_m.toFixed(2);
+    document.getElementById('gait-avg-step-length').textContent = data.gait.avg_step_length_m.toFixed(2);
   } catch (e) {
     console.error('status poll failed', e);
   }
