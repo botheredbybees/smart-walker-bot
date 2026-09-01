@@ -90,9 +90,18 @@ def main():
 
         # publish_rate_hz defaults to 1.0 - give it time to publish at least
         # once after all the synthetic input above has been processed.
+        # Keep spinning until the metrics have actually converged to the
+        # expected step_count, not just until any message arrives -
+        # gait_metrics_node's 1Hz timer publishes on schedule regardless of
+        # input completeness, so several early, incomplete snapshots can
+        # queue up while this script was busy publishing synthetic input
+        # above. Stopping at the first non-None message risks grabbing one
+        # of those stale backlog snapshots instead of the converged state.
         deadline = time.monotonic() + 10.0
-        while node.latest_metrics is None and time.monotonic() < deadline:
+        while time.monotonic() < deadline:
             rclpy.spin_once(node, timeout_sec=0.5)
+            if node.latest_metrics is not None and node.latest_metrics['step_count'] >= NUM_STEPS:
+                break
 
         if node.latest_metrics is None:
             print('FAIL: no /gait_metrics message received within 10s')
