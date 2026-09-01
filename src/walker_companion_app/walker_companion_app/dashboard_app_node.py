@@ -95,6 +95,8 @@ class DashboardAppNode(Node):
         try:
             gait = json.loads(msg.data)
         except (ValueError, TypeError):
+            gait = None
+        if not isinstance(gait, dict):
             self.get_logger().warn(
                 'Ignoring malformed /gait_metrics payload.', throttle_duration_sec=5.0,
             )
