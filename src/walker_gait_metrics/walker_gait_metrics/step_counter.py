@@ -20,7 +20,9 @@ class StepCounter:
         confirming a new step, False otherwise."""
         if accel_magnitude_g < self._step_threshold_g:
             return False
-        if self._last_step_s is not None and now_s - self._last_step_s < self._min_step_interval_s:
+        # Small epsilon tolerance for floating-point precision in timestamp arithmetic
+        epsilon = 1e-9
+        if self._last_step_s is not None and now_s - self._last_step_s < self._min_step_interval_s - epsilon:
             return False
         self._last_step_s = now_s
         return True

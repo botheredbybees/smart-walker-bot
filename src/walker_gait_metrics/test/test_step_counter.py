@@ -44,3 +44,15 @@ def test_a_debounced_sample_does_not_reset_the_debounce_window():
     counter.update(1.5, 0.0)                   # step 1
     counter.update(1.5, 0.1)                   # debounced, must not move the "last step" time
     assert counter.update(1.5, 0.35) is True   # 0.35s since step 1 (not since the debounced 0.1)
+
+
+def test_floating_point_boundary_case_at_decimal_timestamps():
+    """Regression test for FP precision issue: 1.2 - 0.9 = 0.29999999999999993 < 0.3
+    With epsilon tolerance, this boundary case must count as a step, not debounce."""
+    counter = _make_counter()
+    counter.update(1.5, 0.0)   # step 1 at t=0.0
+    counter.update(1.5, 0.3)   # step 2 at t=0.3
+    counter.update(1.5, 0.6)   # step 3 at t=0.6
+    counter.update(1.5, 0.9)   # step 4 at t=0.9
+    # The critical case: t=1.2 should count even though 1.2 - 0.9 has FP precision loss
+    assert counter.update(1.5, 1.2) is True   # step 5 must not be debounced
