@@ -110,6 +110,15 @@ These constraints shape how motor-control and nav code must be structured, not j
   network, which is too slow to be a primary safety mechanism. Never wire a spoken command as the sole or primary
   path to stopping the robot — it must go through (or be backed by) the hardware E-stop / watchdog path.
 
+## Wellness/monitoring feature design principle
+
+Health/wellness features (gait analysis, grip strength, step count, fall/anomaly detection,
+etc.) should be exposed to the walker's user directly and conversationally, through
+`walker_llm_bridge`, not just logged passively to a caregiver-only dashboard. Elder-care
+robotics research is consistent that acceptance depends on avoiding a paternalistic or
+infantilizing feel — design new wellness features around this from the spec stage, not as a
+presentation choice applied afterward.
+
 ## Planned architecture (`src/README.md`)
 
 `src/` is a `colcon` workspace. Planned packages, in build order (README.md §6):
