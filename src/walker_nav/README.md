@@ -22,10 +22,12 @@ colcon workspace root).
   `/scan` (`frame_id='base_link'`, no separate laser frame) built from
   the room via `room_map.py`. Parameters: `num_beams` (default 360),
   `max_range_m` (default 8.0 — must match
-  `config/slam_toolbox_params.yaml`'s `max_laser_range`), `scan_rate_hz`
-  (default 5.0), `fov_deg` (default 360 — full circle; <360 produces a
-  non-wrapping forward arc via `room_map.py`'s `fov_to_scan_params`,
-  e.g. 57 for a Kinect-realistic profile).
+  `config/slam_toolbox_params.yaml`'s `max_laser_range` unless
+  deliberately overridden at launch — see "Running the Kinect-realistic
+  sensor profile" below), `scan_rate_hz` (default 5.0), `fov_deg`
+  (default 360 — full circle; <360 produces a non-wrapping forward arc
+  via `room_map.py`'s `fov_to_scan_params`, e.g. 57 for a
+  Kinect-realistic profile).
 - `config/slam_toolbox_params.yaml` — binds `odom_frame`/`base_frame`/
   `map_frame`/`scan_topic`/`resolution`/`max_laser_range`; everything
   else is `slam_toolbox`'s own default (except `use_sim_time`, which
@@ -126,8 +128,20 @@ Substitute this for the plain `ros2 launch walker_nav walker_nav.launch.py`
 line in either the SLAM or Nav2 end-to-end check above to re-run it
 against the narrow-FOV profile.
 
+Note this deliberately leaves `config/slam_toolbox_params.yaml`'s
+`max_laser_range` at `8.0` — this branch doesn't touch that file. That's
+benign: `slam_toolbox`'s `SetRangeThreshold` (upstream Karto SDK) clips
+its range threshold into `[minimum_range, maximum_range]`, where the
+maximum comes from the incoming scan's own `range_max` field, not the
+YAML value — so the effective range threshold still tracks the scan's
+actual `max_range_m=4.0`, no-return readings stay no-returns, and no
+phantom obstacle arc gets mapped out at the old 8m limit. The FAIL
+below is therefore genuine FOV/coverage behavior, not an artifact of
+the `max_range_m`/`max_laser_range` mismatch.
+
 **Result of the first Kinect-profile run (`fov_deg=57`, `max_range_m=4.0`)
-against the existing two-room floor plan and Nav2 tuning:**
+against the existing two-room floor plan and Nav2 tuning** (each of
+`verify_slam.py` and `verify_nav2.py` run once, n=1):
 
 - `tools/verify_slam.py`: **FAIL** — `/map has only 2414 known cells,
   expected at least 5000 - slam_toolbox may not have mapped past Room 1`.
