@@ -78,7 +78,7 @@ provided." Not worth the machinery for one consumer.
 `step_counter.py`'s pure `StepCounter` mirrors `FallDetector`/`TiltDetector`'s exact style:
 `StepCounter(step_threshold_g, min_step_interval_s)`; `.update(accel_magnitude_g: float, now_s:
 float) -> bool`, called once per sample, returns `True` exactly on the sample confirming a new
-step (magnitude crosses `step_threshold_g` and at least `min_step_interval_s` has elapsed since
+step (magnitude is above `step_threshold_g` and at least `min_step_interval_s` has elapsed since
 the last confirmed step — the debounce prevents one footstep's impact-and-settle from being
 counted twice). Takes an already-computed magnitude, same as `FallDetector`, not raw axes.
 Thresholds are placeholder constructor defaults, not calibrated against real data — same

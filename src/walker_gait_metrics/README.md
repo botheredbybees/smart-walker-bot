@@ -44,6 +44,23 @@ frame is a genuine bring-up-time question this package's pytest suite cannot ans
 `walker_anomaly_detection/docs/bring_up.md` for the real-hardware finding once bring-up happens,
 and this package's own design spec §2.5 for the reasoning.
 
+## These numbers assume the person is walking with the robot
+
+`avg_step_length_m` is only meaningful while a person is actually walking alongside/behind the
+moving walker. `GaitTracker.on_odom_pose` accumulates `total_distance_m` from real `/odom`
+unconditionally — including during autonomous Nav2 navigation with nobody present, or if the
+person lags, leads, or stops while the walker keeps moving. In all of those cases distance keeps
+accumulating from wheel odometry with no code-level way to tell the difference, inflating
+`avg_step_length_m` with no warning. This is stated as an assumption in the design spec (§2.6),
+but is called out here too since it's the kind of thing that makes a dashboard number look wrong
+for no visible reason.
+
+As a related, forward-looking note (not a fix, just something to watch for at hardware bring-up):
+real wheel encoder jitter at `walker_motor_driver`'s ~20Hz `/odom` rate will accumulate small
+positive deltas even when the robot is truly stationary, since `on_odom_pose` just sums
+`hypot(dx, dy)` between consecutive poses with no minimum-movement deadband. Worth adding a small
+deadband once real (not simulated) odometry is in the loop.
+
 ## No coupling to walker_safety
 
 This package only publishes an observational metric and read-only consumes `/odom` — it never

@@ -1,9 +1,9 @@
 # ROS2 workspace
 
-This directory is a `colcon` workspace root. Six packages now exist —
+This directory is a `colcon` workspace root. Seven packages now exist —
 `walker_safety`, `walker_motor_driver`, `walker_nav`, `walker_llm_bridge`,
-`walker_companion_app`, and `walker_anomaly_detection` — see the "Planned
-packages" list below for each one's status. This file records the layout
+`walker_companion_app`, `walker_anomaly_detection`, and `walker_gait_metrics`
+— see the "Planned packages" list below for each one's status. This file records the layout
 so build-order work (see the main [README](../README.md) §6) lands in a
 consistent place.
 
@@ -38,6 +38,13 @@ real `ament_python` packages.
   `walker_motor_driver`, but it was never implemented there. First package developed against
   real hardware rather than simulation; see the package's own README and `docs/bring_up.md`.
   Wiring `/anomaly_detected` into `walker_companion_app`'s dashboard is a separate follow-up.
+- **Built (pure logic + node; frame-mounted-IMU step-detection unvalidated).**
+  **`walker_gait_metrics`** — computes step count and step length from
+  `walker_anomaly_detection`'s IMU stream and `walker_motor_driver`'s odometry, publishing
+  `/gait_metrics`; surfaced on `walker_companion_app`'s dashboard. Whether the frame-mounted IMU
+  actually sees footsteps at all is an open, untested question — see the package's own README
+  and `walker_anomaly_detection/docs/bring_up.md`. A new addition beyond the original roadmap, in
+  the same spirit as `walker_anomaly_detection`.
 
 ## Setup
 
@@ -114,6 +121,17 @@ PYTHONNOUSERSITE=1 colcon build --packages-select walker_anomaly_detection --sym
 source install/setup.bash
 
 python3 -m pytest walker_anomaly_detection/test/ -v   # pure-module unit tests, no ROS sourcing needed
+```
+
+Build/test `walker_gait_metrics`:
+
+```bash
+source /opt/ros/humble/setup.bash
+cd src
+PYTHONNOUSERSITE=1 colcon build --packages-select walker_gait_metrics --symlink-install
+source install/setup.bash
+
+python3 -m pytest walker_gait_metrics/test/ -v   # pure-module unit tests, no ROS sourcing needed
 ```
 
 (`PYTHONNOUSERSITE=1` works around a workstation-specific setuptools/jaraco.functools version

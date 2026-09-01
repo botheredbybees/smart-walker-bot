@@ -6,7 +6,7 @@ docs/superpowers/specs/2026-09-01-walker-gait-metrics-design.md Sec 2.4.
 
 class StepCounter:
     """Tracks accelerometer magnitude (g) across a stream of samples.
-    Detects a step whenever magnitude crosses above step_threshold_g,
+    Detects a step whenever magnitude is above step_threshold_g,
     debounced by min_step_interval_s so one footstep's impact-and-settle
     isn't counted twice."""
 

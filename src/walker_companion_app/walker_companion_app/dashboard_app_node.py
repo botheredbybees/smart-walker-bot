@@ -24,6 +24,8 @@ from walker_companion_app.occupancy_grid_json import grid_to_json
 from walker_companion_app.pose_json import pose_to_json
 from walker_companion_app.shared_state import SharedState
 
+REQUIRED_GAIT_KEYS = ('step_count', 'total_distance_m', 'avg_step_length_m')
+
 
 class DashboardAppNode(Node):
     def __init__(self):
@@ -96,7 +98,14 @@ class DashboardAppNode(Node):
             gait = json.loads(msg.data)
         except (ValueError, TypeError):
             gait = None
-        if not isinstance(gait, dict):
+        if (
+            not isinstance(gait, dict)
+            or not all(key in gait for key in REQUIRED_GAIT_KEYS)
+            or not all(
+                isinstance(gait.get(key), (int, float)) and not isinstance(gait.get(key), bool)
+                for key in REQUIRED_GAIT_KEYS
+            )
+        ):
             self.get_logger().warn(
                 'Ignoring malformed /gait_metrics payload.', throttle_duration_sec=5.0,
             )

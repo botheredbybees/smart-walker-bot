@@ -82,4 +82,9 @@ itself is verified working (above), also check: with `walker_gait_metrics` runni
 `walker_motor_driver`, `echo /gait_metrics` while a person actually walks with the assembled
 walker and see whether `step_count` increments at a plausible rate. If it doesn't, that's a real
 finding — see `walker_gait_metrics`'s own design spec §2.5 for what to consider next (a
-wheel-odometry-based step signal, or a person/handle-mounted sensor instead).
+wheel-odometry-based step signal, or a person/handle-mounted sensor instead). Also watch the
+opposite failure while you're at it: with the walker stationary but the frame vibrating (idling on
+a hard floor, or being nudged), check whether `step_count` keeps climbing at an implausible rate
+anyway — `StepCounter` has no re-arm below threshold, so it counts every `min_step_interval_s`
+debounce tick for as long as the signal stays above `step_threshold_g`, not just on each new
+footstep.
