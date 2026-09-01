@@ -34,7 +34,9 @@ ESP32 side isn't wired up yet ("a small project of its own") — see
 - `walker_anomaly_detection/anomaly_detection_node.py` — the `rclpy`
   node: opens the configured serial port, reads samples on a background
   thread, feeds both detectors, publishes `/anomaly_detected`
-  (`std_msgs/String`, JSON payload) on a detected event.
+  (`std_msgs/String`, JSON payload) on a detected event, and republishes
+  every parsed sample as JSON on `/imu/raw_sample` (consumed by
+  `walker_gait_metrics`).
 - `firmware/imu_reader.py` — MicroPython, on-device: reads the IMU over
   I2C, streams JSON-line samples over USB serial. No detection logic —
   untestable except on real hardware, mirrors

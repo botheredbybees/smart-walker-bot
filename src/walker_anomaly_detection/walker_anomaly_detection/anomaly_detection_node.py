@@ -48,6 +48,7 @@ class AnomalyDetectionNode(Node):
         )
 
         self._alert_pub = self.create_publisher(String, '/anomaly_detected', 10)
+        self._raw_sample_pub = self.create_publisher(String, '/imu/raw_sample', 10)
 
         self._stopping = False
         self._serial_conn = serial.Serial(serial_port, baud_rate, timeout=1.0)
@@ -72,6 +73,8 @@ class AnomalyDetectionNode(Node):
                 )
 
     def _on_sample(self, sample):
+        self._raw_sample_pub.publish(String(data=json.dumps(sample)))
+
         now_s = self.get_clock().now().nanoseconds / 1e9
         accel_magnitude_g = math.sqrt(
             sample['ax'] ** 2 + sample['ay'] ** 2 + sample['az'] ** 2

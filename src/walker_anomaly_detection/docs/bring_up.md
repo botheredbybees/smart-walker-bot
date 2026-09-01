@@ -71,3 +71,15 @@ the expected `fall`/`tilt` event. This manual step is the only thing
 `tools/verify_anomaly_detection.py`'s automated `pty`-based check (design spec §2.10) can't
 cover — it proves the node's wiring works, not that a real accelerometer produces sensible
 values.
+
+## Open question for walker_gait_metrics: does this IMU see footsteps at all?
+
+This IMU monitors the walker frame's own motion (fall/tilt of the robot), not something worn by
+the person. `walker_gait_metrics` (a separate package) assumes a person's footsteps produce a
+detectable jolt through the frame — this has never been tested on real hardware. Once the sensor
+itself is verified working (above), also check: with `walker_gait_metrics` running
+(`ros2 launch walker_gait_metrics gait_metrics.launch.py`) alongside this package and
+`walker_motor_driver`, `echo /gait_metrics` while a person actually walks with the assembled
+walker and see whether `step_count` increments at a plausible rate. If it doesn't, that's a real
+finding — see `walker_gait_metrics`'s own design spec §2.5 for what to consider next (a
+wheel-odometry-based step signal, or a person/handle-mounted sensor instead).

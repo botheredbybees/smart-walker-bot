@@ -35,10 +35,15 @@ class VerifyNode(Node):
     def __init__(self):
         super().__init__('walker_anomaly_detection_verify')
         self.events = []
+        self.raw_samples = []
         self.create_subscription(String, '/anomaly_detected', self._on_event, 10)
+        self.create_subscription(String, '/imu/raw_sample', self._on_raw_sample, 10)
 
     def _on_event(self, msg):
         self.events.append(json.loads(msg.data))
+
+    def _on_raw_sample(self, msg):
+        self.raw_samples.append(json.loads(msg.data))
 
 
 def _sample_line(ax, ay, az, t_ms):
@@ -91,6 +96,18 @@ def main():
             print(f'FAIL: no fall event received within 10s (events so far: {node.events})')
             return 1
         print('Fall event received.')
+
+        if not node.raw_samples:
+            print(
+                'FAIL: no /imu/raw_sample messages received - anomaly_detection_node should '
+                'republish every parsed sample'
+            )
+            return 1
+        first = node.raw_samples[0]
+        if not (first['ax'] == 0.0 and first['ay'] == 0.0 and first['az'] == 1.0):
+            print(f'FAIL: first /imu/raw_sample payload {first} does not match the first sample sent')
+            return 1
+        print(f'/imu/raw_sample verified ({len(node.raw_samples)} samples received).')
 
         # --- Tilt scenario: sustained tilt past the 3.0s duration threshold ---
         # tilt_from_accel_deg(1.0, 0.0, 0.0) == 90 degrees, well past the 45-degree default.
