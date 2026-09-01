@@ -23,7 +23,9 @@ colcon workspace root).
   the room via `room_map.py`. Parameters: `num_beams` (default 360),
   `max_range_m` (default 8.0 — must match
   `config/slam_toolbox_params.yaml`'s `max_laser_range`), `scan_rate_hz`
-  (default 5.0).
+  (default 5.0), `fov_deg` (default 360 — full circle; <360 produces a
+  non-wrapping forward arc via `room_map.py`'s `fov_to_scan_params`,
+  e.g. 57 for a Kinect-realistic profile).
 - `config/slam_toolbox_params.yaml` — binds `odom_frame`/`base_frame`/
   `map_frame`/`scan_topic`/`resolution`/`max_laser_range`; everything
   else is `slam_toolbox`'s own default (except `use_sim_time`, which
@@ -108,6 +110,45 @@ goal to be rejected outright. Kill all three launched processes when
 done, same `ps aux` caveat as the SLAM check above — three launch
 trees now, not two, so more child processes to account for.
 
+## Running the Kinect-realistic sensor profile
+
+`walker_nav.launch.py` exposes `fov_deg` (default `360.0`) and
+`max_range_m` (default `8.0`) as launch arguments — no separate launch
+file. The documented Kinect v1 profile
+(`docs/superpowers/specs/2026-09-01-walker-nav-kinect-design.md` Sec 2.3)
+is `fov_deg=57`, `max_range_m=4.0`:
+
+```bash
+ros2 launch walker_nav walker_nav.launch.py fov_deg:=57.0 max_range_m:=4.0
+```
+
+Substitute this for the plain `ros2 launch walker_nav walker_nav.launch.py`
+line in either the SLAM or Nav2 end-to-end check above to re-run it
+against the narrow-FOV profile.
+
+**Result of the first Kinect-profile run (`fov_deg=57`, `max_range_m=4.0`)
+against the existing two-room floor plan and Nav2 tuning:**
+
+- `tools/verify_slam.py`: **FAIL** — `/map has only 2414 known cells,
+  expected at least 5000 - slam_toolbox may not have mapped past Room 1`.
+  The drive maneuver itself still completed (the script's earlier
+  final-pose-inside-Room-2 check passed; it only failed the known-cell
+  threshold), so this is a *mapping-coverage* shortfall, not a
+  navigation failure: a 57° forward arc capped at 4m simply sweeps far
+  less of the two rooms in the same scripted maneuver than the
+  full-circle 8m profile does (which maps ~6100 cells on the same run).
+- `tools/verify_nav2.py`: **PASS** — `navigate_to_pose SUCCEEDED, final
+  pose (-0.21, -0.13) [map frame] is 0.25m from the goal`. Nav2 still
+  plans and drives the return trip successfully on the sparser map,
+  because the return goal is the start pose, which the robot has
+  already observed.
+
+This is a **known limitation, recorded as-is** — no fix was attempted.
+Deciding what to do about it (revisit the room layout, the doorway
+maneuver, `verify_slam.py`'s coverage threshold, or accept a documented
+degraded-mapping limitation) is out of scope for this pass, per the
+design spec Sec 2.3 and Sec 5.
+
 ## The room's origin is the robot's start pose
 
 `room_map.py`'s walls are defined so `(0, 0)` is both the room's local
@@ -143,6 +184,31 @@ detect this assumption silently breaking.
   code — `tools/` isn't set up as an importable package). Those get
   recalibrated at hardware bring-up (see that package's README) — when
   they change, both scripts' timing needs revisiting.
+- **`tools/verify_slam.py`'s known-cell count is sampled from a single
+  `/map` publish and is genuinely flaky under machine load — a FAIL in
+  the 4400s usually just needs a re-run.** `config/slam_toolbox_params.yaml`
+  doesn't set `map_update_interval`, so `slam_toolbox`'s own default of
+  **10.0s** applies (upstream's `mapper_params_online_async.yaml` would
+  have set 5.0, but passing our own `slam_params_file` replaces it).
+  `/map` is therefore published only about every 10s, while
+  `verify_slam.py`'s whole maneuver is ~13s of wall-clock time and it
+  reads whatever `/map` arrived last. In practice the check is decided
+  by *one* map sample taken ~10s after `slam_toolbox` starts, so the
+  result depends entirely on how far the robot had driven by that
+  instant. On an idle machine the robot is already through the doorway
+  and the count lands ~6100 (PASS); on a loaded machine, node startup
+  and DDS discovery delay the drive by a couple of seconds, the sample
+  catches the robot still short of Room 2, and the count lands ~4400-4500
+  (FAIL) — reproducibly enough to look like a real regression rather
+  than noise. This was measured directly (probing `/map` arrival times
+  showed publishes at t≈10s, 20s, 30s, with the 20s sample already at
+  ~6400 cells). Both this and `tools/verify_nav2.py` are wall-clock
+  timed against a CPU-bound `slam_toolbox`, so on a busy shared desktop
+  expect occasional failures and re-run before concluding anything
+  broke. A future pass could de-flake this by pinning a shorter
+  `map_update_interval` in `config/slam_toolbox_params.yaml` and/or
+  having `verify_slam.py` wait for a fresh `/map` after the maneuver
+  instead of accepting a stale one.
 - `slam_toolbox`'s upstream `online_async_launch.py` defaults
   `use_sim_time` to `true` and applies it after any params file, so
   `walker_nav.launch.py` must (and does) override it explicitly to
