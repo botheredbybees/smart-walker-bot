@@ -11,7 +11,7 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 
-from walker_nav.room_map import scan_room, yaw_from_quaternion
+from walker_nav.room_map import fov_to_scan_params, scan_room, yaw_from_quaternion
 
 
 class FakeLidarNode(Node):
@@ -21,10 +21,12 @@ class FakeLidarNode(Node):
         self.declare_parameter('num_beams', 360)
         self.declare_parameter('max_range_m', 8.0)
         self.declare_parameter('scan_rate_hz', 5.0)
+        self.declare_parameter('fov_deg', 360.0)
 
         self._num_beams = self.get_parameter('num_beams').value
         self._max_range_m = self.get_parameter('max_range_m').value
         scan_rate_hz = self.get_parameter('scan_rate_hz').value
+        fov_deg = self.get_parameter('fov_deg').value
 
         if self._num_beams <= 0:
             raise ValueError("num_beams must be positive")
@@ -33,8 +35,9 @@ class FakeLidarNode(Node):
         if scan_rate_hz <= 0:
             raise ValueError("scan_rate_hz must be positive")
 
-        self._angle_min_rad = -math.pi
-        self._angle_increment_rad = (2.0 * math.pi) / self._num_beams
+        # fov_deg's own >0 / num_beams>=2-for-narrow-arc validation lives in
+        # fov_to_scan_params itself (walker_nav.room_map) - see its docstring.
+        self._angle_min_rad, self._angle_increment_rad = fov_to_scan_params(fov_deg, self._num_beams)
 
         # Defaults match the room's origin (spec Sec 2.3) - if /odom
         # never arrives, the node still publishes a valid, if
