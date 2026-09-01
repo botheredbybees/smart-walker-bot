@@ -66,8 +66,8 @@ def test_avg_step_length_computes_distance_over_steps():
     tracker.on_odom_pose(0.0, 0.0)
     tracker.on_odom_pose(10.0, 0.0)  # 10m traveled
     tracker.on_imu_sample(_sample(0.0, 0.0, 1.5), 0.0)
-    tracker.on_imu_sample(_sample(0.0, 0.0, 1.5), 0.5)  # 0.5s spacing avoids FP precision issues
-    tracker.on_imu_sample(_sample(0.0, 0.0, 1.5), 1.0)
-    tracker.on_imu_sample(_sample(0.0, 0.0, 1.5), 1.5)
-    tracker.on_imu_sample(_sample(0.0, 0.0, 1.5), 2.0)  # 5 steps
+    tracker.on_imu_sample(_sample(0.0, 0.0, 1.5), 0.3)
+    tracker.on_imu_sample(_sample(0.0, 0.0, 1.5), 0.6)
+    tracker.on_imu_sample(_sample(0.0, 0.0, 1.5), 0.9)
+    tracker.on_imu_sample(_sample(0.0, 0.0, 1.5), 1.2)  # 5 steps
     assert tracker.avg_step_length_m == 2.0
