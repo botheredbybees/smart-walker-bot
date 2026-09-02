@@ -11,7 +11,8 @@ hardware exists), `walker_nav` (a real `ament_python` ROS2 package - a simulated
 feeding `slam_toolbox` for mapping, backed by a fixed hardcoded room until real hardware
 exists; Nav2 navigates autonomously against that live map, using `nav2_bringup`'s own
 navigation stack), `walker_llm_bridge` (a real `ament_python` ROS2 package - a
-text-based conversational bridge to an Ollama server; real STT/TTS and nav-goal
+text-based conversational bridge to an Ollama server, now also answering wellness
+questions from live `/gait_metrics`/`/anomaly_detected` data; real STT/TTS and nav-goal
 translation still deferred to hardware bring-up), `walker_companion_app` (a real
 `ament_python` ROS2 package - a local-network web dashboard over a stdlib HTTP server,
 serving robot pose, Nav2 status, a live map, the conversation log, gait metrics, and
@@ -133,7 +134,10 @@ etc.) should be exposed to the walker's user directly and conversationally, thro
 `walker_llm_bridge`, not just logged passively to a caregiver-only dashboard. Elder-care
 robotics research is consistent that acceptance depends on avoiding a paternalistic or
 infantilizing feel — design new wellness features around this from the spec stage, not as a
-presentation choice applied afterward.
+presentation choice applied afterward. `walker_gait_metrics`' and `walker_anomaly_detection`'s
+data is now applied conversationally: `walker_llm_bridge` subscribes to `/gait_metrics` and
+`/anomaly_detected` and answers wellness questions from that live data (warmly, reactively —
+only when asked, never volunteered unprompted) — see that package's own README.
 
 ## Planned architecture (`src/README.md`)
 

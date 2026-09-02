@@ -26,6 +26,7 @@ Usage (after `colcon build --packages-select walker_llm_bridge` and
 
 Exits 0 and prints PASS on success, exits 1 and prints FAIL otherwise.
 """
+import json
 import os
 import shutil
 import signal
@@ -50,6 +51,8 @@ class VerifyNode(Node):
         self.create_subscription(String, '/llm_bridge/text_in', self._on_text_in, 10)
         self.create_subscription(String, '/llm_bridge/text_out', self._on_text_out, 10)
         self.create_subscription(Empty, '/llm_bridge/stop_requested', self._on_stop, 10)
+        self.gait_pub = self.create_publisher(String, '/gait_metrics', 10)
+        self.anomaly_pub = self.create_publisher(String, '/anomaly_detected', 10)
 
     def _on_text_in(self, msg):
         self.text_in_messages.append(msg.data)
@@ -90,6 +93,17 @@ def main():
 
     try:
         time.sleep(2.0)  # let the node finish declaring parameters/subscriptions
+
+        # Wellness data published before the utterance below - not asserted
+        # on semantically (too flaky against a real LLM's exact wording),
+        # just confirms the node stays up and responsive with this context
+        # wired in. Eyeball the printed round-trip response to sanity-check
+        # it actually reflects this data.
+        gait_payload = json.dumps({'step_count': 42, 'total_distance_m': 84.0, 'avg_step_length_m': 2.0})
+        node.gait_pub.publish(String(data=gait_payload))
+        alert_payload = json.dumps({'type': 'fall', 'timestamp': time.time()})
+        node.anomaly_pub.publish(String(data=alert_payload))
+        time.sleep(1.0)
 
         try:
             fifo_write.write('hello there\n')
@@ -138,7 +152,10 @@ def main():
             )
             return 1
 
-        print('PASS: text_in echo, Ollama round-trip response, and stop-intent short-circuit all verified')
+        print(
+            'PASS: text_in echo, Ollama round-trip response (with wellness context wired in), '
+            'and stop-intent short-circuit all verified'
+        )
         return 0
     finally:
         node.destroy_node()

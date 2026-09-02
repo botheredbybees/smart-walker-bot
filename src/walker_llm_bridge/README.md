@@ -29,10 +29,20 @@ repo's colcon workspace root).
   stdin lines on a background daemon thread; `speak()` prints to
   stdout. Input/output streams are injectable, so it's unit-tested
   deterministically with `io.StringIO` rather than a real terminal.
+- `walker_llm_bridge/wellness_context.py` — pure Python:
+  `build_wellness_context_message(gait, alert_counts, latest_alert_type)`
+  turns the latest `/gait_metrics` snapshot and `/anomaly_detected`
+  counts into a warm, plain-language system message the LLM can draw
+  on when asked — or `None` if nothing is known yet. Implements
+  CLAUDE.md's wellness/monitoring design principle: exposed
+  conversationally, not just logged to the dashboard, and never
+  paternalistic/clinical in tone.
 - `walker_llm_bridge/llm_bridge_node.py` — the `rclpy` node wiring the
   above together: constructs the backend from the `voice_io_backend`
-  param, keeps an in-memory conversation history, publishes
-  `/llm_bridge/text_in` and `/llm_bridge/text_out`
+  param, keeps an in-memory conversation history, subscribes
+  `/gait_metrics` and `/anomaly_detected` to track the latest wellness
+  data (injected fresh into each chat turn, not stored in history),
+  publishes `/llm_bridge/text_in` and `/llm_bridge/text_out`
   (`std_msgs/String`), and `/llm_bridge/stop_requested`
   (`std_msgs/Empty`) when a stop utterance is detected — unconsumed
   this pass, publish-only.
@@ -40,11 +50,15 @@ repo's colcon workspace root).
   `voice_io_backend` argument (default `text`).
 - `tools/verify_llm_bridge.py` — scripted (not pytest) end-to-end
   check: launches the node itself with stdin redirected from a named
-  pipe, writes an utterance, and confirms the `/llm_bridge/text_in`
+  pipe, publishes a fake `/gait_metrics` and `/anomaly_detected`
+  message, writes an utterance, and confirms the `/llm_bridge/text_in`
   echo, a real `/llm_bridge/text_out` round-trip response from the
   actual reachable Ollama server, and that a stop utterance fires
-  `/llm_bridge/stop_requested` without calling Ollama. See this file's
-  own docstring for usage.
+  `/llm_bridge/stop_requested` without calling Ollama. The round-trip
+  response's actual wording isn't asserted on (too flaky against a
+  real LLM) — eyeball the printed response to sanity-check it reflects
+  the published wellness data. See this file's own docstring for
+  usage.
 
 ## Running the pure-module tests
 
@@ -75,6 +89,32 @@ error. This is exactly why `tools/verify_llm_bridge.py` launches the node via `r
 a named pipe standing in for a real terminal's stdin) instead of using this launch file. The
 launch file still exists for future backends — e.g. once a real STT/TTS backend removes the
 stdin dependency, `ros2 launch` will work normally.
+
+## Wellness data is exposed conversationally, not just on the dashboard
+
+The node subscribes to `/gait_metrics` and `/anomaly_detected` and keeps the
+latest gait snapshot plus a running per-type alert count. On every user
+utterance, `wellness_context.py` builds a fresh system message from this
+state (or nothing, if neither topic has published yet) and injects it into
+that turn's Ollama call — never into the stored `_history`, so it's always
+current. The message is framed as background info for the assistant, not
+something to volunteer unprompted every turn: it only surfaces when the
+user actually asks (e.g. "how many steps have I taken?", "did I fall
+earlier?"), and the default `system_prompt` steers the tone to be warm and
+plain, not clinical — CLAUDE.md's wellness/monitoring design principle
+applied here for the first time. This pass is reactive-only: no alert
+triggers the robot to speak up unprompted (a possible future addition, not
+implemented now).
+
+Since the gait/alert state is written from the `rclpy` spin thread but read
+from `TextIoBackend`'s background stdin thread, a `threading.Lock`
+(`_wellness_lock`) guards it — the same two-thread hazard
+`walker_companion_app/shared_state.py` guards against. An alert `type` is
+also validated against a short identifier pattern (`^[a-zA-Z0-9_-]{1,32}$`)
+before being tracked, since it's embedded verbatim into an LLM system-role
+message: unlike the numeric gait fields, a free-form string here would be
+a prompt-injection vector for a hostile/misbehaving `/anomaly_detected`
+publisher.
 
 ## Voice "stop" is a convenience signal only
 
