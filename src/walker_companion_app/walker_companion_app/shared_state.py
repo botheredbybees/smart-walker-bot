@@ -10,6 +10,8 @@ docs/superpowers/specs/2026-08-30-walker-companion-app-design.md Sec
 """
 import threading
 
+MAX_ALERTS = 20
+
 
 class SharedState:
     def __init__(self, conversation_log):
@@ -18,6 +20,7 @@ class SharedState:
         self._pose = {'x': 0.0, 'y': 0.0, 'theta': 0.0}
         self._nav_status = 'idle'
         self._gait = {'step_count': 0, 'total_distance_m': 0.0, 'avg_step_length_m': 0.0}
+        self._alerts = []
         self._map = {
             'width': 0, 'height': 0, 'resolution': 0.0,
             'origin_x': 0.0, 'origin_y': 0.0, 'data': [],
@@ -42,6 +45,16 @@ class SharedState:
     def add_conversation_entry(self, role, text, timestamp):
         with self._lock:
             self._conversation_log.append(role, text, timestamp)
+
+    def add_alert(self, alert):
+        with self._lock:
+            self._alerts.append(dict(alert))
+            if len(self._alerts) > MAX_ALERTS:
+                self._alerts = self._alerts[-MAX_ALERTS:]
+
+    def alerts_snapshot(self):
+        with self._lock:
+            return [dict(alert) for alert in self._alerts]
 
     def status_snapshot(self, timestamp):
         with self._lock:

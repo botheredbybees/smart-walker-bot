@@ -25,6 +25,7 @@ from walker_companion_app.pose_json import pose_to_json
 from walker_companion_app.shared_state import SharedState
 
 REQUIRED_GAIT_KEYS = ('step_count', 'total_distance_m', 'avg_step_length_m')
+REQUIRED_ALERT_KEYS = ('type', 'timestamp')
 
 
 class DashboardAppNode(Node):
@@ -56,6 +57,7 @@ class DashboardAppNode(Node):
         self.create_subscription(String, '/llm_bridge/text_in', self._on_text_in, 10)
         self.create_subscription(String, '/llm_bridge/text_out', self._on_text_out, 10)
         self.create_subscription(String, '/gait_metrics', self._on_gait_metrics, 10)
+        self.create_subscription(String, '/anomaly_detected', self._on_anomaly_detected, 10)
 
         handler_class = make_handler_class(self._state, index_html)
         # 0.0.0.0, not just localhost - README Sec 5.5 wants this reachable
@@ -111,6 +113,24 @@ class DashboardAppNode(Node):
             )
             return
         self._state.set_gait_metrics(gait)
+
+    def _on_anomaly_detected(self, msg):
+        try:
+            alert = json.loads(msg.data)
+        except (ValueError, TypeError):
+            alert = None
+        if (
+            not isinstance(alert, dict)
+            or not all(key in alert for key in REQUIRED_ALERT_KEYS)
+            or not isinstance(alert.get('type'), str)
+            or not isinstance(alert.get('timestamp'), (int, float))
+            or isinstance(alert.get('timestamp'), bool)
+        ):
+            self.get_logger().warn(
+                'Ignoring malformed /anomaly_detected payload.', throttle_duration_sec=5.0,
+            )
+            return
+        self._state.add_alert(alert)
 
     def stop(self):
         self._http_server.shutdown()

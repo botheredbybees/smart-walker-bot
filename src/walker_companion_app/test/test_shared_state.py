@@ -87,3 +87,32 @@ def test_add_conversation_entry_reflected_in_conversation_snapshot(tmp_path):
     state = _make_state(tmp_path)
     state.add_conversation_entry('user', 'hello', 1000.0)
     assert state.conversation_snapshot() == [{'role': 'user', 'text': 'hello', 'timestamp': 1000.0}]
+
+
+def test_default_alerts_snapshot_empty(tmp_path):
+    state = _make_state(tmp_path)
+    assert state.alerts_snapshot() == []
+
+
+def test_add_alert_reflected_in_alerts_snapshot(tmp_path):
+    state = _make_state(tmp_path)
+    state.add_alert({'type': 'fall', 'timestamp': 1000.0})
+    assert state.alerts_snapshot() == [{'type': 'fall', 'timestamp': 1000.0}]
+
+
+def test_alerts_snapshot_returns_a_copy(tmp_path):
+    state = _make_state(tmp_path)
+    state.add_alert({'type': 'fall', 'timestamp': 1000.0})
+    snapshot = state.alerts_snapshot()
+    snapshot[0]['type'] = 'tilt'
+    assert state.alerts_snapshot()[0]['type'] == 'fall'
+
+
+def test_alerts_snapshot_trims_to_max_length(tmp_path):
+    state = _make_state(tmp_path)
+    for i in range(25):
+        state.add_alert({'type': 'fall', 'timestamp': float(i)})
+    snapshot = state.alerts_snapshot()
+    assert len(snapshot) == 20
+    assert snapshot[0]['timestamp'] == 5.0
+    assert snapshot[-1]['timestamp'] == 24.0

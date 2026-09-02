@@ -14,18 +14,18 @@ navigation stack), `walker_llm_bridge` (a real `ament_python` ROS2 package - a
 text-based conversational bridge to an Ollama server; real STT/TTS and nav-goal
 translation still deferred to hardware bring-up), `walker_companion_app` (a real
 `ament_python` ROS2 package - a local-network web dashboard over a stdlib HTTP server,
-serving robot pose, Nav2 status, a live map, and the conversation log), `walker_anomaly_detection`
+serving robot pose, Nav2 status, a live map, the conversation log, gait metrics, and
+fall/anomaly alerts), `walker_anomaly_detection`
 (a real `ament_python` ROS2 package - fall/anomaly detection via
 a real ESP32-streamed 9-axis IMU, the first package developed against real hardware rather
 than simulation; ESP32 wiring/bring-up is still pending, but the node's own logic is fully
-verified via a pty-backed virtual serial pair - see the package's own README), and
+verified via a pty-backed virtual serial pair - see the package's own README; its
+`/anomaly_detected` alerts are wired into `walker_companion_app`'s dashboard), and
 `walker_gait_metrics` (a real `ament_python` ROS2 package - wellness gait metrics (step count,
 step length) computed from `walker_anomaly_detection`'s IMU stream and `walker_motor_driver`'s
 odometry, published on `/gait_metrics` and surfaced on `walker_companion_app`'s dashboard;
 whether the frame-mounted IMU actually sees footsteps at all is an open, untested question
-pending hardware bring-up - see the package's own README). Wiring
-`walker_anomaly_detection`'s alerts into `walker_companion_app`'s dashboard is a separate,
-not-yet-started follow-up.
+pending hardware bring-up - see the package's own README).
 
 Build/test `walker_motor_driver`:
 

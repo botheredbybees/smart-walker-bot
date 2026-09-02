@@ -26,18 +26,20 @@ repo's colcon workspace root).
 - `walker_companion_app/shared_state.py` — pure Python: `SharedState`,
   the sole `threading.Lock`-guarded boundary between the `rclpy`
   callback thread (writers) and the HTTP server threads (readers) —
-  wraps pose, map, nav status, and the `ConversationLog` instance.
+  wraps pose, map, nav status, gait metrics, a capped in-memory list of
+  recent fall/anomaly alerts (newest kept, oldest dropped past 20), and
+  the `ConversationLog` instance.
 - `walker_companion_app/http_handler.py` — `build_response`, a pure
   function holding all HTTP response-building logic; `DashboardRequestHandler`
   is a thin `BaseHTTPRequestHandler` binding it to real sockets.
 - `walker_companion_app/dashboard_app_node.py` — the `rclpy` node:
   subscribes `/odom`, `/map`, `/navigate_to_pose/_action/status`,
-  `/llm_bridge/text_in`, `/llm_bridge/text_out`, `/gait_metrics`; runs the HTTP server in
-  a background thread.
+  `/llm_bridge/text_in`, `/llm_bridge/text_out`, `/gait_metrics`,
+  `/anomaly_detected`; runs the HTTP server in a background thread.
 - `web/index.html` — the dashboard page: polls `/api/status`,
-  `/api/map`, `/api/conversation` on an interval, renders the map on a
-  `<canvas>`, shows gait metrics (step count, distance, average step length), and shows a static
-  (unwired) alerts placeholder.
+  `/api/map`, `/api/conversation`, `/api/alerts` on an interval, renders the map on a
+  `<canvas>`, shows gait metrics (step count, distance, average step length), and lists
+  recent fall/anomaly alerts (newest first).
 - `launch/dashboard_app.launch.py` — launch file with an `http_port`
   argument (default `8080`).
 - `tools/verify_dashboard_app.py` — a scripted (not pytest) end-to-end
@@ -108,9 +110,11 @@ by an unrelated pre-existing service, so the dashboard is launched with
 `http_port:=8081` instead (see above) — visit `http://localhost:8081/`
 (or the LAN-IP equivalent) here instead.
 
-## Fall/anomaly alerts are not wired up
+## Fall/anomaly alerts
 
-The dashboard's alerts panel is static placeholder text — no topic, no
-endpoint. No fall/anomaly detection subsystem exists anywhere in this
-project yet (root `README.md` §5.2 assigns it to an IMU monitor that was
-never built). See the design spec §2.7 for the reasoning.
+The dashboard subscribes to `walker_anomaly_detection`'s
+`/anomaly_detected` topic (`std_msgs/String`, JSON `{type, timestamp}`)
+and serves the most recent alerts (oldest-first, capped at 20) from
+`GET /api/alerts`; the dashboard page reverses this to display them
+newest-first. A malformed payload is logged and dropped, the same
+defensive pattern used for `/gait_metrics`.

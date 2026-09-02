@@ -48,6 +48,7 @@ class VerifyDriverNode(Node):
         super().__init__('walker_companion_app_verify')
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.gait_pub = self.create_publisher(String, '/gait_metrics', 10)
+        self.anomaly_pub = self.create_publisher(String, '/anomaly_detected', 10)
         self.nav_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
 
 
@@ -94,6 +95,16 @@ def main():
             )
             return 1
         print(f"Gait metrics verified: {status['gait']}")
+
+        # --- Anomaly alert appears in /api/alerts ---
+        alert_payload = json.dumps({'type': 'fall', 'timestamp': time.time()})
+        node.anomaly_pub.publish(String(data=alert_payload))
+        time.sleep(1.0)
+        alerts = _get_json('/api/alerts')
+        if not any(a.get('type') == 'fall' for a in alerts):
+            print(f"FAIL: /api/alerts did not reflect published /anomaly_detected (got {alerts})")
+            return 1
+        print(f"Anomaly alert verified: {alerts[-1]}")
 
         # --- Nav2 status transitions away from idle after a goal ---
         if not node.nav_client.wait_for_server(timeout_sec=10.0):
@@ -144,7 +155,10 @@ def main():
             print("FAIL: no matching user entry ('hello there') found in /api/conversation")
             return 1
 
-        print('PASS: pose update, Nav2 status transition, live map, and conversation log all verified')
+        print(
+            'PASS: pose update, gait metrics, anomaly alert, Nav2 status transition, live map, '
+            'and conversation log all verified'
+        )
         return 0
     finally:
         node.destroy_node()

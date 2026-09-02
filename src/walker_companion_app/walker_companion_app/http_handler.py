@@ -9,7 +9,7 @@ import time
 from http.server import BaseHTTPRequestHandler
 
 
-def build_response(path, status_snapshot, map_snapshot, conversation_snapshot, index_html):
+def build_response(path, status_snapshot, map_snapshot, conversation_snapshot, alerts_snapshot, index_html):
     """Returns (status_code, content_type, body_bytes) for a GET request
     to path. Pure - takes already-computed snapshots and the pre-loaded
     index page, no I/O of its own."""
@@ -21,6 +21,8 @@ def build_response(path, status_snapshot, map_snapshot, conversation_snapshot, i
         return 200, 'application/json', json.dumps(map_snapshot).encode('utf-8')
     if path == '/api/conversation':
         return 200, 'application/json', json.dumps(conversation_snapshot).encode('utf-8')
+    if path == '/api/alerts':
+        return 200, 'application/json', json.dumps(alerts_snapshot).encode('utf-8')
     return 404, 'text/plain; charset=utf-8', b'Not Found'
 
 
@@ -35,8 +37,9 @@ def make_handler_class(shared_state, index_html):
             status_snapshot = shared_state.status_snapshot(time.time())
             map_snapshot = shared_state.map_snapshot()
             conversation_snapshot = shared_state.conversation_snapshot()
+            alerts_snapshot = shared_state.alerts_snapshot()
             status_code, content_type, body = build_response(
-                self.path, status_snapshot, map_snapshot, conversation_snapshot, index_html
+                self.path, status_snapshot, map_snapshot, conversation_snapshot, alerts_snapshot, index_html
             )
             try:
                 self.send_response(status_code)

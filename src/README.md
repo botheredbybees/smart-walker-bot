@@ -28,16 +28,16 @@ real `ament_python` packages.
   conversational bridge to the Ollama server (§5.3); real STT/TTS and
   nav-goal translation still deferred (see the package's own README).
 - **Built.** **`walker_companion_app`** — local-network web dashboard:
-  robot pose, Nav2 status, live map, and the `walker_llm_bridge`
-  conversation log (§5.5). Fall/anomaly alerts are a static placeholder
-  — see the package's own README.
+  robot pose, Nav2 status, live map, `walker_gait_metrics`' gait stats,
+  `walker_anomaly_detection`'s fall/anomaly alerts, and the
+  `walker_llm_bridge` conversation log (§5.5).
 - **Built (pure logic + node; hardware bring-up pending).** **`walker_anomaly_detection`** —
   fall/anomaly detection via a real ESP32-streamed 9-axis IMU: free-fall+impact and
   sustained-tilt detection, publishing `/anomaly_detected` alerts. A new addition beyond the
   original five-package roadmap — root `README.md` §5.2 originally assigned this to
   `walker_motor_driver`, but it was never implemented there. First package developed against
   real hardware rather than simulation; see the package's own README and `docs/bring_up.md`.
-  Wiring `/anomaly_detected` into `walker_companion_app`'s dashboard is a separate follow-up.
+  `/anomaly_detected` is wired into `walker_companion_app`'s dashboard.
 - **Built (pure logic + node; frame-mounted-IMU step-detection unvalidated).**
   **`walker_gait_metrics`** — computes step count and step length from
   `walker_anomaly_detection`'s IMU stream and `walker_motor_driver`'s odometry, publishing
